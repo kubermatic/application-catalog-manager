@@ -1,0 +1,11 @@
+applications/
+deploy/charts/
+hack/
+docs/
+*.md
+*.json
+*.yaml
+*.yml
+*.sh
+.git/
+_build/
