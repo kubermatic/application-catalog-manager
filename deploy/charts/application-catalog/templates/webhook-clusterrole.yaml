@@ -1,0 +1,28 @@
+{{- if .Values.webhook.enabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "application-catalog.fullname" . }}-webhook
+  labels:
+    {{- include "application-catalog.labels" . | nindent 4 }}
+    app.kubernetes.io/component: webhook
+rules:
+  # Webhook needs minimal permissions - just read ApplicationCatalogs for validation context
+  - apiGroups:
+      - applicationcatalog.k8c.io
+    resources:
+      - applicationcatalogs
+    verbs:
+      - get
+      - list
+      - watch
+  # Validation webhook needs to list ApplicationDefinitions to detect conflicts
+  - apiGroups:
+      - apps.kubermatic.k8c.io
+    resources:
+      - applicationdefinitions
+    verbs:
+      - get
+      - list
+      - watch
+{{- end }}

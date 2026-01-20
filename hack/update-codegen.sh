@@ -22,6 +22,6 @@ source hack/lib.sh
 echodate "Generating deepcopy for applicationcatalog:v1alpha1"
 go run sigs.k8s.io/controller-tools/cmd/controller-gen \
   object:headerFile="hack/boilerplate/ce/boilerplate.go.txt" \
-  paths="./pkg/crd/..."
+  paths="./pkg/..."
 
 echodate "Code generation complete"

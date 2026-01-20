@@ -71,7 +71,7 @@ load_manager() {
   IMAGE_TAG=${IMAGE_TAG:-testing}
   IMAGE_TAG=$IMAGE_TAG make docker-image
 
-  kubectl scale deployment --replicas 0 -n kubermatic app-manager-application-catalog
+  kubectl scale deployment --replicas 0 -n kubermatic app-manager-application-catalog || echodate "no existing deployment to scale down"
   kind load docker-image --name $CLUSTER_NAME quay.io/kubermatic/application-catalog-manager:$IMAGE_TAG
 
   helm upgrade --install app-manager ./deploy/charts/application-catalog -n kubermatic --create-namespace
@@ -97,8 +97,8 @@ install_cert_manager() {
 
 install_crds() {
   echodate "Installing CRDs..."
-  kubectl apply -f https://raw.githubusercontent.com/buraksekili/kubermatic/refs/heads/feat/operator-catalog-manager/pkg/crd/k8c.io/kubermatic.k8c.io_kubermaticconfigurations.yaml
-  kubectl apply -f https://raw.githubusercontent.com/buraksekili/kubermatic/refs/heads/feat/operator-catalog-manager/pkg/crd/k8c.io/apps.kubermatic.k8c.io_applicationdefinitions.yaml
+  kubectl apply -f https://raw.githubusercontent.com/buraksekili/kubermatic/refs/heads/feat/application-catalog/pkg/crd/k8c.io/kubermatic.k8c.io_kubermaticconfigurations.yaml
+  kubectl apply -f https://raw.githubusercontent.com/buraksekili/kubermatic/refs/heads/feat/application-catalog/pkg/crd/k8c.io/apps.kubermatic.k8c.io_applicationdefinitions.yaml
 
   # Install ApplicationCatalog CRD
   kubectl apply -f deploy/crd/applicationcatalog.k8c.io_applicationcatalogs.yaml
@@ -108,8 +108,6 @@ install_crds() {
 
 main() {
   trap cleanup EXIT
-
-  echodate "Starting Harbor in KinD setup..."
 
   command -v kind >/dev/null 2>&1 || {
     echodate "ERROR: kind is required but not installed."

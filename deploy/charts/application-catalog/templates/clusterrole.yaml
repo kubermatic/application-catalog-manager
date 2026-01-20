@@ -1,0 +1,104 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "application-catalog.fullname" . }}
+  labels:
+    {{- include "application-catalog.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - apps.kubermatic.k8c.io
+  resources:
+  - applicationdefinitions
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - apps.kubermatic.k8c.io
+  resources:
+  - applicationdefinitions/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - apps.kubermatic.k8c.io
+  resources:
+  - applicationdefinitions/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - kubermatic.k8c.io
+  resources:
+  - kubermaticconfigurations
+  verbs:
+  - get
+  - update
+  - list
+  - watch
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - applicationcatalog.k8c.io
+  resources:
+  - applicationcatalogs
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - applicationcatalog.k8c.io
+  resources:
+  - applicationcatalogs/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - applicationcatalog.k8c.io
+  resources:
+  - applicationcatalogs/finalizers
+  verbs:
+  - update
