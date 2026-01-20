@@ -26,7 +26,7 @@ echodate "Generating CRD manifests"
 go run sigs.k8s.io/controller-tools/cmd/controller-gen \
   crd \
   object:headerFile="hack/boilerplate/ce/boilerplate.go.txt" \
-  paths="./pkg/crd/..." \
+  paths="./pkg/..." \
   output:crd:artifacts:config=./deploy/crd
 
 echodate "CRD generation complete"
