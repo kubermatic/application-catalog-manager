@@ -32,6 +32,7 @@ boilerplate -verbose \
   -boilerplates hack/boilerplate/ee \
   -exclude 'internal/*' \
   -exclude 'pkg/*' \
+  -exclude 'v1alpha1/*' \
   -exclude '.prow/*' \
   -exclude '.github/*' \
   -exclude 'hack/*' \
