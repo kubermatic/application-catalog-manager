@@ -21,19 +21,30 @@ source hack/lib.sh
 
 echodate "Verifying generated code is up-to-date"
 
-# Create a temporary copy of the pkg directory
+# Verify deepcopy functions
 tmpdir=$(mktemp -d)
 trap "rm -rf $tmpdir" EXIT
 
 cp -r pkg/ "$tmpdir/pkg"
 
-# Run code generation
 ./hack/update-codegen.sh
 
-# Compare the results
 if ! diff -Naupr "$tmpdir/pkg" pkg/; then
   echodate "Generated code is out of date. Please run 'make update-codegen' and commit the changes."
   exit 1
 fi
 
 echodate "Generated code is up-to-date"
+
+echodate "Verifying CRD manifests are up-to-date"
+mkdir -p deploy/crd
+cp -r deploy/crd/ "$tmpdir/crd"
+
+./hack/update-crds.sh
+
+if ! diff -Naupr "$tmpdir/crd" deploy/crd/; then
+  echodate "CRD manifests are out of date. Please run 'make update-crds' and commit the changes."
+  exit 1
+fi
+
+echodate "CRD manifests are up-to-date"
