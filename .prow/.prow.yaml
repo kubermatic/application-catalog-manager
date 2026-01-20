@@ -16,8 +16,8 @@ presubmits:
   - name: pre-kubermatic-verify-boilerplate
     always_run: true
     decorate: true
-    clone_uri: "ssh://git@github.com/kubermatic/application-catalog.git"
-    path_alias: k8c.io/application-catalog
+    clone_uri: "ssh://git@github.com/kubermatic/application-catalog-manager.git"
+    path_alias: k8c.io/application-catalog-manager
     labels:
       preset-docker-push-kubermatic: "true"
     spec:
