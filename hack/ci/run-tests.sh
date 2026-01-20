@@ -19,13 +19,6 @@ set -euo pipefail
 cd $(dirname $0)/../..
 source hack/lib.sh
 
-APPLICATION_NAMES=$(ls applications/ | tr '\n' ',' | sed 's/,$//')
-
-if [ -z "$APPLICATION_NAMES" ]; then
-  echodate "Error: No applications found in applications/ directory"
-  exit 1
-fi
-
 if [[ ! -z "${JOB_NAME:-}" ]] && [[ ! -z "${PROW_JOB_ID:-}" ]]; then
   start_docker_daemon_ci
 fi
@@ -36,7 +29,7 @@ hack/env.sh || {
   exit 1
 }
 
-echodate "Running tests, by declaring the applications as: \"$APPLICATION_NAMES\""
+echodate "Running tests..."
 
 export KUBECONFIG=~/.kube/config
 protokol --kubeconfig "$KUBECONFIG" --flat --output "$ARTIFACTS/logs/kubermatic" --namespace kubermatic > /dev/null 2>&1 &

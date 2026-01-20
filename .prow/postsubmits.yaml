@@ -13,10 +13,10 @@
 # limitations under the License.
 
 postsubmits:
-  - name: post-application-catalog-publish-image
+  - name: post-application-catalog-manager-publish-image
     always_run: true
     decorate: true
-    clone_uri: "ssh://git@github.com/kubermatic/application-catalog.git"
+    clone_uri: "ssh://git@github.com/kubermatic/application-catalog-manager.git"
     branches:
       - ^main$
       - ^v\d+\.\d+\.\d+.*

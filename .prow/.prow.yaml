@@ -32,8 +32,8 @@ presubmits:
   - name: pre-kubermatic-verify-lint
     always_run: true
     decorate: true
-    clone_uri: "ssh://git@github.com/kubermatic/application-catalog.git"
-    path_alias: k8c.io/application-catalog
+    clone_uri: "ssh://git@github.com/kubermatic/application-catalog-manager.git"
+    path_alias: k8c.io/application-catalog-manager
     labels:
       preset-docker-push-kubermatic: "true"
     spec:
@@ -46,29 +46,12 @@ presubmits:
             requests:
               memory: 1Gi
               cpu: 1
-  - name: pre-kubermatic-verify-applications
-    decorate: true
-    run_if_changed: "^applications/"
-    clone_uri: "ssh://git@github.com/kubermatic/application-catalog.git"
-    path_alias: k8c.io/application-catalog
-    labels:
-      preset-docker-push-kubermatic: "true"
-    spec:
-      containers:
-        - image: quay.io/kubermatic/build:go-1.24-node-20-6
-          command:
-            - ./hack/verify-applications.sh
-          resources:
-            requests:
-              memory: "128Mi"
-              cpu: "500m"
   - name: pre-kubermatic-test-e2e
-    run_if_changed: "(Dockerfile|go.mod|go.sum|cmd/|hack/|internal/|tests/)"
+    run_if_changed: "(Dockerfile|go.mod|go.sum|cmd/|hack/|internal/|tests/|pkg/)"
     decorate: true
-    clone_uri: "ssh://git@github.com/kubermatic/application-catalog.git"
+    clone_uri: "ssh://git@github.com/kubermatic/application-catalog-manager.git"
     labels:
       preset-docker-mirror: "true"
-      preset-vsphere: "true"
       preset-goproxy: "true"
     spec:
       containers:
