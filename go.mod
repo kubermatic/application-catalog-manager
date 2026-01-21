@@ -1,6 +1,6 @@
 module k8c.io/application-catalog-manager
 
-go 1.24.3
+go 1.24.0
 
 require (
 	github.com/go-logr/zapr v1.3.0
