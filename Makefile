@@ -25,7 +25,7 @@ BUILD_GOOS?=linux
 BUILD_GOARCH?=amd64
 export GIT_TAG ?= $(shell git tag --points-at HEAD)
 
-GO_VERSION = 1.24.3
+GO_VERSION = 1.24.0
 
 CMD = $(notdir $(wildcard ./cmd/*))
 BUILD_DEST ?= _build
