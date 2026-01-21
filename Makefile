@@ -43,7 +43,7 @@ lint:
 	golangci-lint run \
 		--verbose \
 		--print-resources-usage \
-		./internal/... ./cmd/...
+		./internal/... ./cmd/... ./pkg/...
 
 .PHONY: verify
 verify: lint

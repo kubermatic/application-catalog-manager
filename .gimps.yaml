@@ -17,7 +17,7 @@
 exclude:
   - charts/**
 
-importOrder: [std, external, oras, kubermatic, kubernetes]
+importOrder: [std, external, kubermatic, kubernetes]
 sets:
   - name: kubermatic
     patterns:
@@ -27,6 +27,3 @@ sets:
     patterns:
       - 'k8s.io/**'
       - '*.k8s.io/**'
-  - name: oras
-    patterns:
-      - 'oras.land*'
