@@ -17,41 +17,33 @@ package defaulting
 
 import (
 	"sort"
+	"strings"
 
 	catalogv1alpha1 "k8c.io/application-catalog-manager/pkg/apis/applicationcatalog/v1alpha1"
 )
 
 // DefaultApplicationCatalog applies default values to an ApplicationCatalog.
-// It injects the default chart list when spec.helm.charts is nil.
-//
-// The distinction between nil and empty is important:
-//   - nil: No charts specified, inject defaults
-//   - []: User explicitly wants no ApplicationDefinitions created
-//   - [...]: User specified a custom list of charts
+// When spec.helm.includeDefaults is true, it merges the default chart list.
+// Users must explicitly opt-in to get default applications.
 func DefaultApplicationCatalog(catalog *catalogv1alpha1.ApplicationCatalog) {
 	if catalog.Spec.Helm == nil {
 		catalog.Spec.Helm = &catalogv1alpha1.HelmSpec{}
 	}
 
-	// Only inject defaults if Charts is nil, meaning that its not explicitly set
-	if catalog.Spec.Helm.Charts == nil {
-		catalog.Spec.Helm.Charts = GetDefaultCharts()
-		if catalog.Spec.Helm == nil {
-			return
-		}
-
-		// sort each chart by chart version
-		for i := range catalog.Spec.Helm.Charts {
-			sort.Slice(catalog.Spec.Helm.Charts[i].ChartVersions, func(a, b int) bool {
-				return catalog.Spec.Helm.Charts[i].ChartVersions[a].ChartVersion < catalog.Spec.Helm.Charts[i].ChartVersions[b].ChartVersion
-			})
-		}
-
-		// sort charts by chart name
-		sort.Slice(catalog.Spec.Helm.Charts, func(i, j int) bool {
-			return catalog.Spec.Helm.Charts[i].ChartName < catalog.Spec.Helm.Charts[j].ChartName
-		})
+	if !catalog.Spec.Helm.IncludeDefaults {
+		return
 	}
+
+	charts := GetDefaultCharts()
+
+	includeAnnotation := catalog.Annotations["defaultcatalog.k8c.io/include"]
+	if includeAnnotation != "" {
+		charts = filterDefaultsByName(charts, parseIncludeList(includeAnnotation))
+	}
+
+	sortCharts(charts)
+
+	catalog.Spec.Helm.Charts = mergeCharts(catalog.Spec.Helm.Charts, charts)
 }
 
 // GetDefaultCharts returns the default set of Helm charts that are
@@ -241,4 +233,69 @@ fullnameOverride: "kueue"
 			},
 		},
 	}
+}
+
+func parseIncludeList(annotation string) []string {
+	if annotation == "" {
+		return nil
+	}
+
+	parts := strings.Split(annotation, ",")
+	for i := range parts {
+		parts[i] = strings.TrimSpace(parts[i])
+	}
+
+	return parts
+}
+
+func mergeCharts(userCharts, defaults []catalogv1alpha1.ChartConfig) []catalogv1alpha1.ChartConfig {
+	result := make(map[string]catalogv1alpha1.ChartConfig)
+
+	for _, chart := range defaults {
+		result[chart.ChartName] = chart
+	}
+
+	for _, chart := range userCharts {
+		result[chart.ChartName] = chart
+	}
+
+	resultSlice := make([]catalogv1alpha1.ChartConfig, 0, len(result))
+	for _, chart := range result {
+		resultSlice = append(resultSlice, chart)
+	}
+
+	sortCharts(resultSlice)
+	return resultSlice
+}
+
+func filterDefaultsByName(charts []catalogv1alpha1.ChartConfig, includeList []string) []catalogv1alpha1.ChartConfig {
+	if len(includeList) == 0 {
+		return charts
+	}
+
+	includeSet := make(map[string]struct{})
+	for _, name := range includeList {
+		includeSet[name] = struct{}{}
+	}
+
+	var filtered []catalogv1alpha1.ChartConfig
+	for _, chart := range charts {
+		if _, included := includeSet[chart.ChartName]; included {
+			filtered = append(filtered, chart)
+		}
+	}
+
+	return filtered
+}
+
+func sortCharts(charts []catalogv1alpha1.ChartConfig) {
+	for i := range charts {
+		sort.Slice(charts[i].ChartVersions, func(a, b int) bool {
+			return charts[i].ChartVersions[a].ChartVersion < charts[i].ChartVersions[b].ChartVersion
+		})
+	}
+
+	sort.Slice(charts, func(i, j int) bool {
+		return charts[i].ChartName < charts[j].ChartName
+	})
 }

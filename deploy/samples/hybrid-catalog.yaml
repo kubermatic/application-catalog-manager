@@ -1,0 +1,28 @@
+# Mix your own applications with KKP defaults
+# You get your 2 custom apps plus all 11 defaults (13 total)
+apiVersion: applicationcatalog.k8c.io/v1alpha1
+kind: ApplicationCatalog
+metadata:
+  name: hybrid-catalog
+spec:
+  helm:
+    includeDefaults: true
+    charts:
+      - chartName: my-custom-app
+        metadata:
+          displayName: "My Custom App"
+          description: "My custom application alongside KKP defaults"
+        repositorySettings:
+          baseURL: https://charts.mycompany.com
+        chartVersions:
+          - chartVersion: 1.0.0
+            appVersion: v1.0.0
+      - chartName: another-custom-app
+        metadata:
+          displayName: "Another Custom App"
+          description: "Another custom application"
+        repositorySettings:
+          baseURL: https://charts.example.com
+        chartVersions:
+          - chartVersion: 2.0.0
+            appVersion: v2.0.0

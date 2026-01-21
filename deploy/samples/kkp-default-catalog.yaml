@@ -1,0 +1,11 @@
+# KKP default catalog - gets all 11 default charts automatically
+# Defaults include: argo-cd, cert-manager, cilium, cluster-autoscaler,
+# falco, flux2, gpu-operator, ingress-nginx, kueue, metallb, trivy
+apiVersion: applicationcatalog.k8c.io/v1alpha1
+kind: ApplicationCatalog
+metadata:
+  name: kkp-default-catalog
+spec:
+  helm:
+    includeDefaults: true
+    charts: []

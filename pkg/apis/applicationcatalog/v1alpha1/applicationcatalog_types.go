@@ -30,14 +30,18 @@ type HelmSpec struct {
 	RepositorySettings *RepositorySettings `json:"repositorySettings,omitempty"`
 
 	// Charts is the list of Helm charts to include in this catalog.
-	// Each chart will be converted to an ApplicationDefinition.
-	//
-	// If nil/omitted, the webhook will inject default charts.
-	// If empty (`[]`), no ApplicationDefinitions will be created.
-	// If specified, only the listed charts will be created.
+	// Each chart entry in the list will be converted to an ApplicationDefinition.
 	//
 	// +optional
 	Charts []ChartConfig `json:"charts"`
+
+	// IncludeDefaults indicates that the webhook should automatically
+	// keep this catalog in sync with the default application catalog.
+	// When true, the webhook will merge defaults on every UPDATE operation,
+	// not just when charts is nil.
+	//
+	// +optional
+	IncludeDefaults bool `json:"includeDefaults,omitempty"`
 }
 
 // ApplicationCatalogSpec defines the desired state of ApplicationCatalog.

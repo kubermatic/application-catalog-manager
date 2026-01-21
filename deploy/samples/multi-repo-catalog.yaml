@@ -1,0 +1,45 @@
+# Pull charts from different Helm repositories
+# Each chart can come from a different source
+apiVersion: applicationcatalog.k8c.io/v1alpha1
+kind: ApplicationCatalog
+metadata:
+  name: multi-repo-catalog
+spec:
+  helm:
+    charts:
+      - chartName: stable-app
+        metadata:
+          displayName: "Stable App"
+          description: "Application from Helm stable repository"
+        repositorySettings:
+          baseURL: https://charts.helm.sh/stable
+        chartVersions:
+          - chartVersion: 3.0.0
+            appVersion: v3.0.0
+      - chartName: incubator-app
+        metadata:
+          displayName: "Incubator App"
+          description: "Application from Helm incubator repository"
+        repositorySettings:
+          baseURL: https://charts.helm.sh/incubator
+        chartVersions:
+          - chartVersion: 1.5.0
+            appVersion: v1.5.0
+      - chartName: bitnami-app
+        metadata:
+          displayName: "Bitnami App"
+          description: "Application from Bitnami repository"
+        repositorySettings:
+          baseURL: https://charts.bitnami.com/bitnami
+        chartVersions:
+          - chartVersion: 10.0.0
+            appVersion: v10.0.0
+      - chartName: private-app
+        metadata:
+          displayName: "Private App"
+          description: "Application from private registry"
+        repositorySettings:
+          baseURL: https://charts.private-registry.com
+        chartVersions:
+          - chartVersion: 2.0.0
+            appVersion: v2.0.0

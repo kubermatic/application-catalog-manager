@@ -72,6 +72,7 @@ load_manager() {
   IMAGE_TAG=$IMAGE_TAG make docker-image
 
   kubectl scale deployment --replicas 0 -n kubermatic app-manager-application-catalog || echodate "no existing deployment to scale down"
+  kubectl scale deployment --replicas 0 -n kubermatic app-manager-application-catalog-webhook || echodate "no existing webhook deployment to scale down"
   kind load docker-image --name $CLUSTER_NAME quay.io/kubermatic/application-catalog-manager:$IMAGE_TAG
 
   helm upgrade --install app-manager ./deploy/charts/application-catalog -n kubermatic --create-namespace

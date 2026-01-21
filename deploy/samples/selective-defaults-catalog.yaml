@@ -1,0 +1,12 @@
+# Only include specific defaults using the annotation filter
+# This gets just ingress-nginx and cert-manager instead of all 11
+apiVersion: applicationcatalog.k8c.io/v1alpha1
+kind: ApplicationCatalog
+metadata:
+  name: selective-defaults-catalog
+  annotations:
+    defaultcatalog.k8c.io/include: "ingress-nginx,cert-manager"
+spec:
+  helm:
+    includeDefaults: true
+    charts: []

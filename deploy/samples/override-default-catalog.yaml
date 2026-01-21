@@ -1,0 +1,22 @@
+# Replace a default chart with your own version
+# Your ingress-nginx completely replaces the default one
+# You still get the other 10 defaults (argo-cd, cert-manager, etc.)
+apiVersion: applicationcatalog.k8c.io/v1alpha1
+kind: ApplicationCatalog
+metadata:
+  name: override-default-catalog
+spec:
+  helm:
+    includeDefaults: true
+    charts:
+      - chartName: ingress-nginx
+        metadata:
+          displayName: "Custom NGINX Ingress"
+          description: "Custom build of NGINX Ingress Controller for our infrastructure"
+          documentationURL: "https://custom-registry.example.com/docs"
+          sourceURL: "https://github.com/mycompany/ingress-nginx"
+        repositorySettings:
+          baseURL: https://custom-registry.example.com
+        chartVersions:
+          - chartVersion: 4.12.0
+            appVersion: v1.9.0
