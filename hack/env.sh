@@ -77,6 +77,7 @@ load_manager() {
 
   helm upgrade --install app-manager ./deploy/charts/application-catalog -n kubermatic --create-namespace
   kubectl scale deployment --replicas 1 -n kubermatic app-manager-application-catalog
+  kubectl scale deployment --replicas 1 -n kubermatic app-manager-application-catalog-webhook
 }
 
 install_cert_manager() {
