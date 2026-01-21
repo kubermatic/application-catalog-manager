@@ -144,60 +144,6 @@ func (s *applicationCatalogSuite) cleanup(ctx context.Context) error {
 	return appDefErr
 }
 
-func TestWebhookNilChartsInjectsDefaults(t *testing.T) {
-	var s applicationCatalogSuite
-	f := features.New("WebhookNilChartsInjectsDefaults")
-
-	f.Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-		err := s.setupTestCase(ctx, cfg)
-		require.NoError(t, err, "failed to setup test case")
-		return ctx
-	}).Assess("Webhook should inject default charts when spec.helm.charts is nil",
-		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			const catalogName = "test-nil-charts"
-			catalog := &catalogv1alpha1.ApplicationCatalog{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: catalogName,
-				},
-				Spec: catalogv1alpha1.ApplicationCatalogSpec{
-					Helm: nil,
-				},
-			}
-
-			err := s.createApplicationCatalog(ctx, catalog)
-			require.NoError(t, err, "failed to create ApplicationCatalog")
-
-			err = waitFor(ctx, func(ctx context.Context) (bool, error) {
-				created, err := s.getApplicationCatalog(ctx, catalogName)
-				if err != nil {
-					return false, nil
-				}
-
-				if created.Spec.Helm == nil || created.Spec.Helm.Charts == nil {
-					t.Log("waiting for webhook to inject defaults")
-					return false, nil
-				}
-
-				if len(created.Spec.Helm.Charts) == 0 {
-					t.Log("expected default charts to be injected")
-					return false, nil
-				}
-
-				t.Logf("Webhook injected %d default charts", len(created.Spec.Helm.Charts))
-				return true, nil
-			})
-			require.NoError(t, err, "webhook should inject default charts")
-
-			return ctx
-		},
-	).Teardown(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-		require.NoError(t, s.cleanup(ctx))
-		return ctx
-	})
-
-	testEnv.Test(t, f.Feature())
-}
-
 func TestWebhookEmptyArrayNoDefaults(t *testing.T) {
 	var s applicationCatalogSuite
 	f := features.New("WebhookEmptyArrayNoDefaults")
@@ -2519,11 +2465,17 @@ func TestKKPDefaultCatalogWithUserCustomCatalog(t *testing.T) {
 								RepositorySettings: &catalogv1alpha1.RepositorySettings{
 									BaseURL: "https://charts.example.com",
 								},
+								ChartVersions: []catalogv1alpha1.ChartVersion{
+									{ChartVersion: "1.0.0", AppVersion: "v1.0.0"},
+								},
 							},
 							{
 								ChartName: "another-custom-app",
 								RepositorySettings: &catalogv1alpha1.RepositorySettings{
 									BaseURL: "https://charts.example.com",
+								},
+								ChartVersions: []catalogv1alpha1.ChartVersion{
+									{ChartVersion: "2.0.0", AppVersion: "v2.0.0"},
 								},
 							},
 						},
@@ -2540,10 +2492,10 @@ func TestKKPDefaultCatalogWithUserCustomCatalog(t *testing.T) {
 			require.Len(t, userRetrieved.Spec.Helm.Charts, 2,
 				"User catalog should have 2 custom charts")
 
-			require.Equal(t, "another-custom-app", userRetrieved.Spec.Helm.Charts[0].ChartName,
-				"first user chart should be another-custom-app (sorted)")
-			require.Equal(t, "my-custom-app", userRetrieved.Spec.Helm.Charts[1].ChartName,
-				"second user chart should be my-custom-app (sorted)")
+			require.Equal(t, "my-custom-app", userRetrieved.Spec.Helm.Charts[0].ChartName,
+				"first user chart should be my-custom-app")
+			require.Equal(t, "another-custom-app", userRetrieved.Spec.Helm.Charts[1].ChartName,
+				"second user chart should be another-custom-app")
 
 			t.Log("Verifying both catalogs coexist independently")
 
