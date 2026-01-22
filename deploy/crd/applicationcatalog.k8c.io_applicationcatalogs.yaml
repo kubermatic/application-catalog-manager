@@ -53,11 +53,7 @@ spec:
                   charts:
                     description: |-
                       Charts is the list of Helm charts to include in this catalog.
-                      Each chart will be converted to an ApplicationDefinition.
-
-                      If nil/omitted, the webhook will inject default charts.
-                      If empty (`[]`), no ApplicationDefinitions will be created.
-                      If specified, only the listed charts will be created.
+                      Each chart entry in the list will be converted to an ApplicationDefinition.
                     items:
                       description: |-
                         ChartConfig defines the configuration for a single Helm chart
@@ -340,6 +336,13 @@ spec:
                       - chartVersions
                       type: object
                     type: array
+                  includeDefaults:
+                    description: |-
+                      IncludeDefaults indicates that the webhook should automatically
+                      keep this catalog in sync with the default application catalog.
+                      When true, the webhook will merge defaults on every UPDATE operation,
+                      not just when charts is nil.
+                    type: boolean
                   repositorySettings:
                     description: |-
                       RepositorySettings defines the default repository settings for all charts.

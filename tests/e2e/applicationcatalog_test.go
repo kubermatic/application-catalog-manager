@@ -86,6 +86,7 @@ func (s *applicationCatalogSuite) cleanupAllApplicationCatalogs(ctx context.Cont
 func (s *applicationCatalogSuite) createApplicationCatalog(ctx context.Context, catalog *catalogv1alpha1.ApplicationCatalog) error {
 	return waitFor(ctx, func(ctx context.Context) (bool, error) {
 		if err := s.client.Create(ctx, catalog); err != nil {
+			fmt.Printf("failed to create an applicationcatalog: %v\n", err)
 			return false, nil
 		}
 		return true, nil
@@ -141,60 +142,6 @@ func (s *applicationCatalogSuite) cleanup(ctx context.Context) error {
 		return catalogErr
 	}
 	return appDefErr
-}
-
-func TestWebhookNilChartsInjectsDefaults(t *testing.T) {
-	var s applicationCatalogSuite
-	f := features.New("WebhookNilChartsInjectsDefaults")
-
-	f.Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-		err := s.setupTestCase(ctx, cfg)
-		require.NoError(t, err, "failed to setup test case")
-		return ctx
-	}).Assess("Webhook should inject default charts when spec.helm.charts is nil",
-		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			const catalogName = "test-nil-charts"
-			catalog := &catalogv1alpha1.ApplicationCatalog{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: catalogName,
-				},
-				Spec: catalogv1alpha1.ApplicationCatalogSpec{
-					Helm: nil,
-				},
-			}
-
-			err := s.createApplicationCatalog(ctx, catalog)
-			require.NoError(t, err, "failed to create ApplicationCatalog")
-
-			err = waitFor(ctx, func(ctx context.Context) (bool, error) {
-				created, err := s.getApplicationCatalog(ctx, catalogName)
-				if err != nil {
-					return false, nil
-				}
-
-				if created.Spec.Helm == nil || created.Spec.Helm.Charts == nil {
-					t.Log("waiting for webhook to inject defaults")
-					return false, nil
-				}
-
-				if len(created.Spec.Helm.Charts) == 0 {
-					t.Log("expected default charts to be injected")
-					return false, nil
-				}
-
-				t.Logf("Webhook injected %d default charts", len(created.Spec.Helm.Charts))
-				return true, nil
-			})
-			require.NoError(t, err, "webhook should inject default charts")
-
-			return ctx
-		},
-	).Teardown(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-		require.NoError(t, s.cleanup(ctx))
-		return ctx
-	})
-
-	testEnv.Test(t, f.Feature())
 }
 
 func TestWebhookEmptyArrayNoDefaults(t *testing.T) {
@@ -1979,6 +1926,590 @@ func TestValidationWebhookAllowsAfterOriginalCatalogDeleted(t *testing.T) {
 			})
 			require.NoError(t, err, "AppDef should now be managed by successor catalog")
 
+			return ctx
+		},
+	).Teardown(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		require.NoError(t, s.cleanup(ctx))
+		return ctx
+	})
+
+	testEnv.Test(t, f.Feature())
+}
+
+func TestIncludeDefaultsFalseNoInjection(t *testing.T) {
+	var s applicationCatalogSuite
+	f := features.New("IncludeDefaultsFalseNoInjection")
+
+	f.Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		err := s.setupTestCase(ctx, cfg)
+		require.NoError(t, err, "failed to setup test case")
+		return ctx
+	}).Assess("Webhook should NOT inject defaults when includeDefaults is false/omitted",
+		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+			const catalogName = "test-include-defaults-false"
+			includeDefaults := false
+			catalog := &catalogv1alpha1.ApplicationCatalog{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: catalogName,
+				},
+				Spec: catalogv1alpha1.ApplicationCatalogSpec{
+					Helm: &catalogv1alpha1.HelmSpec{
+						IncludeDefaults: includeDefaults,
+						Charts:          []catalogv1alpha1.ChartConfig{},
+					},
+				},
+			}
+
+			err := s.createApplicationCatalog(ctx, catalog)
+			require.NoError(t, err, "failed to create ApplicationCatalog")
+
+			created, err := s.getApplicationCatalog(ctx, catalogName)
+			require.NoError(t, err, "failed to get ApplicationCatalog")
+
+			require.Empty(t, created.Spec.Helm.Charts, "charts should remain empty when includeDefaults is false")
+			t.Log("No defaults injected - includeDefaults is false")
+			return ctx
+		},
+	).Teardown(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		require.NoError(t, s.cleanup(ctx))
+		return ctx
+	})
+
+	testEnv.Test(t, f.Feature())
+}
+
+func TestIncludeDefaultsTrueInjectsAllDefaults(t *testing.T) {
+	var s applicationCatalogSuite
+	f := features.New("IncludeDefaultsTrueInjectsAllDefaults")
+
+	f.Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		err := s.setupTestCase(ctx, cfg)
+		require.NoError(t, err, "failed to setup test case")
+		return ctx
+	}).Assess("Webhook should inject all default charts when includeDefaults is true",
+		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+			const catalogName = "test-include-defaults-true"
+			includeDefaults := true
+			catalog := &catalogv1alpha1.ApplicationCatalog{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: catalogName,
+				},
+				Spec: catalogv1alpha1.ApplicationCatalogSpec{
+					Helm: &catalogv1alpha1.HelmSpec{
+						IncludeDefaults: includeDefaults,
+						Charts:          []catalogv1alpha1.ChartConfig{},
+					},
+				},
+			}
+
+			err := s.createApplicationCatalog(ctx, catalog)
+			require.NoError(t, err, "failed to create ApplicationCatalog")
+
+			err = waitFor(ctx, func(ctx context.Context) (bool, error) {
+				created, err := s.getApplicationCatalog(ctx, catalogName)
+				if err != nil {
+					return false, nil
+				}
+
+				if created.Spec.Helm == nil || created.Spec.Helm.Charts == nil {
+					t.Log("waiting for webhook to inject defaults")
+					return false, nil
+				}
+
+				if len(created.Spec.Helm.Charts) != 11 {
+					t.Logf("expected 11 default charts, got %d", len(created.Spec.Helm.Charts))
+					return false, nil
+				}
+
+				return true, nil
+			})
+			require.NoError(t, err, "webhook should inject exactly 11 default charts")
+
+			created, err := s.getApplicationCatalog(ctx, catalogName)
+			require.NoError(t, err)
+
+			chartNames := make([]string, len(created.Spec.Helm.Charts))
+			for i, chart := range created.Spec.Helm.Charts {
+				chartNames[i] = chart.ChartName
+			}
+
+			// TODO: use GetDefaultChartNames() function, and convert it to
+			// []string slice?
+			expectedCharts := []string{
+				"argo-cd", "cert-manager", "cilium", "cluster-autoscaler",
+				"falco", "flux2", "gpu-operator", "ingress-nginx",
+				"kueue", "metallb", "trivy",
+			}
+			require.Equal(t, expectedCharts, chartNames, "default charts should be sorted alphabetically")
+
+			for _, chart := range created.Spec.Helm.Charts {
+				require.NotNil(t, chart.Metadata, "default charts should have metadata")
+				require.NotEmpty(t, chart.Metadata.DisplayName, "metadata should have display name")
+				require.NotEmpty(t, chart.Metadata.Description, "metadata should have description")
+			}
+
+			t.Log("All 11 default charts injected correctly with metadata")
+			return ctx
+		},
+	).Teardown(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		require.NoError(t, s.cleanup(ctx))
+		return ctx
+	})
+
+	testEnv.Test(t, f.Feature())
+}
+
+func TestIncludeDefaultsTrueWithEmptyArray(t *testing.T) {
+	var s applicationCatalogSuite
+	f := features.New("IncludeDefaultsTrueWithEmptyArray")
+
+	f.Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		err := s.setupTestCase(ctx, cfg)
+		require.NoError(t, err, "failed to setup test case")
+		return ctx
+	}).Assess("Webhook should inject defaults even when charts is an empty array",
+		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+			const catalogName = "test-include-defaults-empty-array"
+			includeDefaults := true
+			catalog := &catalogv1alpha1.ApplicationCatalog{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: catalogName,
+				},
+				Spec: catalogv1alpha1.ApplicationCatalogSpec{
+					Helm: &catalogv1alpha1.HelmSpec{
+						IncludeDefaults: includeDefaults,
+						Charts:          []catalogv1alpha1.ChartConfig{}, // Explicitly empty
+					},
+				},
+			}
+
+			err := s.createApplicationCatalog(ctx, catalog)
+			require.NoError(t, err, "failed to create ApplicationCatalog")
+
+			err = waitFor(ctx, func(ctx context.Context) (bool, error) {
+				created, err := s.getApplicationCatalog(ctx, catalogName)
+				if err != nil {
+					return false, nil
+				}
+
+				if created.Spec.Helm == nil || created.Spec.Helm.Charts == nil {
+					return false, nil
+				}
+
+				if len(created.Spec.Helm.Charts) != 11 {
+					return false, nil
+				}
+
+				return true, nil
+			})
+			require.NoError(t, err, "webhook should inject 11 default charts into empty array")
+
+			created, err := s.getApplicationCatalog(ctx, catalogName)
+			require.NoError(t, err)
+			require.Len(t, created.Spec.Helm.Charts, 11, "empty array + defaults = 11 charts")
+
+			t.Log("Defaults injected into empty array correctly")
+			return ctx
+		},
+	).Teardown(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		require.NoError(t, s.cleanup(ctx))
+		return ctx
+	})
+
+	testEnv.Test(t, f.Feature())
+}
+
+func TestIncludeDefaultsTrueWithCustomCharts(t *testing.T) {
+	var s applicationCatalogSuite
+	f := features.New("IncludeDefaultsTrueWithCustomCharts")
+
+	f.Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		err := s.setupTestCase(ctx, cfg)
+		require.NoError(t, err, "failed to setup test case")
+		return ctx
+	}).Assess("Webhook should merge custom charts with all defaults",
+		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+			const catalogName = "test-include-defaults-custom"
+			includeDefaults := true
+			catalog := &catalogv1alpha1.ApplicationCatalog{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: catalogName,
+				},
+				Spec: catalogv1alpha1.ApplicationCatalogSpec{
+					Helm: &catalogv1alpha1.HelmSpec{
+						IncludeDefaults: includeDefaults,
+						Charts: []catalogv1alpha1.ChartConfig{
+							{
+								ChartName: "my-custom-app",
+								ChartVersions: []catalogv1alpha1.ChartVersion{
+									{ChartVersion: "1.0.0", AppVersion: "v1.0.0"},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			err := s.createApplicationCatalog(ctx, catalog)
+			require.NoError(t, err, "failed to create ApplicationCatalog")
+
+			err = waitFor(ctx, func(ctx context.Context) (bool, error) {
+				created, err := s.getApplicationCatalog(ctx, catalogName)
+				if err != nil {
+					return false, nil
+				}
+
+				if created.Spec.Helm == nil || created.Spec.Helm.Charts == nil {
+					return false, nil
+				}
+
+				if len(created.Spec.Helm.Charts) != 12 {
+					return false, nil
+				}
+
+				return true, nil
+			})
+			require.NoError(t, err, "webhook should merge 1 custom + 11 defaults = 12 charts")
+
+			created, err := s.getApplicationCatalog(ctx, catalogName)
+			require.NoError(t, err)
+
+			chartNames := make(map[string]bool)
+			for _, chart := range created.Spec.Helm.Charts {
+				chartNames[chart.ChartName] = true
+			}
+
+			require.True(t, chartNames["my-custom-app"], "custom chart should be present")
+			require.True(t, chartNames["argo-cd"], "argo-cd default should be present")
+			require.True(t, chartNames["cert-manager"], "cert-manager default should be present")
+			require.True(t, chartNames["ingress-nginx"], "ingress-nginx default should be present")
+
+			t.Log("Custom chart merged with all 11 defaults correctly")
+			return ctx
+		},
+	).Teardown(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		require.NoError(t, s.cleanup(ctx))
+		return ctx
+	})
+
+	testEnv.Test(t, f.Feature())
+}
+
+func TestIncludeDefaultsTrueOverrideDefault(t *testing.T) {
+	var s applicationCatalogSuite
+	f := features.New("IncludeDefaultsTrueOverrideDefault")
+
+	f.Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		err := s.setupTestCase(ctx, cfg)
+		require.NoError(t, err, "failed to setup test case")
+		return ctx
+	}).Assess("User's chart should completely replace default with same name",
+		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+			const catalogName = "test-include-defaults-override"
+			includeDefaults := true
+			customURL := "https://custom.registry.io"
+			catalog := &catalogv1alpha1.ApplicationCatalog{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: catalogName,
+				},
+				Spec: catalogv1alpha1.ApplicationCatalogSpec{
+					Helm: &catalogv1alpha1.HelmSpec{
+						IncludeDefaults: includeDefaults,
+						Charts: []catalogv1alpha1.ChartConfig{
+							{
+								ChartName: "ingress-nginx",
+								RepositorySettings: &catalogv1alpha1.RepositorySettings{
+									BaseURL: customURL,
+								},
+								ChartVersions: []catalogv1alpha1.ChartVersion{
+									{ChartVersion: "1.0.0", AppVersion: "v1.0.0"},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			err := s.createApplicationCatalog(ctx, catalog)
+			require.NoError(t, err, "failed to create ApplicationCatalog")
+
+			err = waitFor(ctx, func(ctx context.Context) (bool, error) {
+				created, err := s.getApplicationCatalog(ctx, catalogName)
+				if err != nil {
+					return false, nil
+				}
+
+				if created.Spec.Helm == nil || created.Spec.Helm.Charts == nil {
+					return false, nil
+				}
+
+				if len(created.Spec.Helm.Charts) != 11 {
+					return false, nil
+				}
+
+				return true, nil
+			})
+			require.NoError(t, err, "webhook should have 11 charts (override + 10 other defaults)")
+
+			created, err := s.getApplicationCatalog(ctx, catalogName)
+			require.NoError(t, err)
+
+			chartNames := make(map[string]bool)
+			for _, chart := range created.Spec.Helm.Charts {
+				chartNames[chart.ChartName] = true
+
+				if chart.ChartName == "ingress-nginx" {
+					require.NotNil(t, chart.RepositorySettings, "ingress-nginx should have repository settings")
+					require.Equal(t, customURL, chart.RepositorySettings.BaseURL, "ingress-nginx should use custom URL")
+					require.Nil(t, chart.Metadata, "user's ingress-nginx should NOT have default metadata (complete replacement)")
+				}
+			}
+
+			require.True(t, chartNames["ingress-nginx"], "ingress-nginx should be present")
+			require.True(t, chartNames["cert-manager"], "cert-manager default should be present")
+			require.True(t, chartNames["argo-cd"], "argo-cd default should be present")
+
+			t.Log("User's ingress-nginx completely replaced default correctly")
+			return ctx
+		},
+	).Teardown(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		require.NoError(t, s.cleanup(ctx))
+		return ctx
+	})
+
+	testEnv.Test(t, f.Feature())
+}
+
+func TestIncludeDefaultsAnnotationFiltering(t *testing.T) {
+	var s applicationCatalogSuite
+	f := features.New("IncludeDefaultsAnnotationFiltering")
+
+	f.Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		err := s.setupTestCase(ctx, cfg)
+		require.NoError(t, err, "failed to setup test case")
+		return ctx
+	}).Assess("Annotation should filter defaults to specific apps",
+		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+			const catalogName = "test-include-defaults-annotation"
+			includeDefaults := true
+			catalog := &catalogv1alpha1.ApplicationCatalog{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: catalogName,
+					Annotations: map[string]string{
+						"defaultcatalog.k8c.io/include": "ingress-nginx,cert-manager",
+					},
+				},
+				Spec: catalogv1alpha1.ApplicationCatalogSpec{
+					Helm: &catalogv1alpha1.HelmSpec{
+						IncludeDefaults: includeDefaults,
+						Charts:          []catalogv1alpha1.ChartConfig{},
+					},
+				},
+			}
+
+			err := s.createApplicationCatalog(ctx, catalog)
+			require.NoError(t, err, "failed to create ApplicationCatalog")
+
+			err = waitFor(ctx, func(ctx context.Context) (bool, error) {
+				created, err := s.getApplicationCatalog(ctx, catalogName)
+				if err != nil {
+					return false, nil
+				}
+
+				if created.Spec.Helm == nil || created.Spec.Helm.Charts == nil {
+					return false, nil
+				}
+
+				if len(created.Spec.Helm.Charts) != 2 {
+					return false, nil
+				}
+
+				return true, nil
+			})
+			require.NoError(t, err, "webhook should inject exactly 2 filtered charts")
+
+			created, err := s.getApplicationCatalog(ctx, catalogName)
+			require.NoError(t, err)
+
+			chartNames := make([]string, len(created.Spec.Helm.Charts))
+			for i, chart := range created.Spec.Helm.Charts {
+				chartNames[i] = chart.ChartName
+			}
+
+			require.Equal(t, []string{"cert-manager", "ingress-nginx"}, chartNames, "annotation should filter to cert-manager and ingress-nginx (sorted)")
+
+			t.Log("Annotation filtering worked correctly")
+			return ctx
+		},
+	).Teardown(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		require.NoError(t, s.cleanup(ctx))
+		return ctx
+	})
+
+	testEnv.Test(t, f.Feature())
+}
+
+func TestIncludeDefaultsAnnotationIgnoredWhenFalse(t *testing.T) {
+	var s applicationCatalogSuite
+	f := features.New("IncludeDefaultsAnnotationIgnoredWhenFalse")
+
+	f.Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		err := s.setupTestCase(ctx, cfg)
+		require.NoError(t, err, "failed to setup test case")
+		return ctx
+	}).Assess("Annotation should have no effect when includeDefaults is false",
+		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+			const catalogName = "test-include-defaults-annotation-ignored"
+			includeDefaults := false
+			catalog := &catalogv1alpha1.ApplicationCatalog{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: catalogName,
+					Annotations: map[string]string{
+						"defaultcatalog.k8c.io/include": "ingress-nginx,cert-manager",
+					},
+				},
+				Spec: catalogv1alpha1.ApplicationCatalogSpec{
+					Helm: &catalogv1alpha1.HelmSpec{
+						IncludeDefaults: includeDefaults,
+						Charts:          []catalogv1alpha1.ChartConfig{},
+					},
+				},
+			}
+
+			err := s.createApplicationCatalog(ctx, catalog)
+			require.NoError(t, err, "failed to create ApplicationCatalog")
+
+			created, err := s.getApplicationCatalog(ctx, catalogName)
+			require.NoError(t, err, "failed to get ApplicationCatalog")
+
+			require.Empty(t, created.Spec.Helm.Charts, "annotation should be ignored when includeDefaults is false")
+
+			t.Log("Annotation correctly ignored when includeDefaults is false")
+			return ctx
+		},
+	).Teardown(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		require.NoError(t, s.cleanup(ctx))
+		return ctx
+	})
+
+	testEnv.Test(t, f.Feature())
+}
+
+func TestKKPDefaultCatalogWithUserCustomCatalog(t *testing.T) {
+	var s applicationCatalogSuite
+	f := features.New("KKPDefaultCatalogWithUserCustomCatalog")
+
+	f.Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		err := s.setupTestCase(ctx, cfg)
+		require.NoError(t, err, "failed to setup test case")
+		return ctx
+	}).Assess("KKP default catalog and user custom catalog coexist correctly",
+		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+			t.Log("Creating KKP default application catalog with includeDefaults")
+
+			includeDefaults := true
+			kkpCatalog := &catalogv1alpha1.ApplicationCatalog{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "kkp-default-catalog",
+				},
+				Spec: catalogv1alpha1.ApplicationCatalogSpec{
+					Helm: &catalogv1alpha1.HelmSpec{
+						IncludeDefaults: includeDefaults,
+						Charts:          []catalogv1alpha1.ChartConfig{},
+					},
+				},
+			}
+
+			err := s.createApplicationCatalog(ctx, kkpCatalog)
+			require.NoError(t, err, "failed to create KKP default catalog")
+			t.Log("KKP default catalog created, waiting for webhook mutation")
+
+			err = waitFor(ctx, func(ctx context.Context) (bool, error) {
+				retrieved, err := s.getApplicationCatalog(ctx, kkpCatalog.Name)
+				if err != nil {
+					return false, err
+				}
+				return len(retrieved.Spec.Helm.Charts) > 0, nil
+			})
+			require.NoError(t, err, "timeout waiting for default charts injection")
+
+			kkpRetrieved, err := s.getApplicationCatalog(ctx, kkpCatalog.Name)
+			require.NoError(t, err, "failed to get KKP default catalog")
+			require.Len(t, kkpRetrieved.Spec.Helm.Charts, 11,
+				"KKP catalog should have all 11 default charts")
+
+			expectedCharts := []string{
+				"argo-cd", "cert-manager", "cilium", "cluster-autoscaler",
+				"falco", "flux2", "gpu-operator", "ingress-nginx",
+				"kueue", "metallb", "trivy",
+			}
+
+			actualChartNames := make([]string, len(kkpRetrieved.Spec.Helm.Charts))
+			for i, chart := range kkpRetrieved.Spec.Helm.Charts {
+				actualChartNames[i] = chart.ChartName
+			}
+			require.Equal(t, expectedCharts, actualChartNames,
+				"KKP catalog charts should match expected default charts")
+
+			t.Log("Creating user custom application catalog")
+
+			userCatalog := &catalogv1alpha1.ApplicationCatalog{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "user-custom-catalog",
+				},
+				Spec: catalogv1alpha1.ApplicationCatalogSpec{
+					Helm: &catalogv1alpha1.HelmSpec{
+						Charts: []catalogv1alpha1.ChartConfig{
+							{
+								ChartName: "my-custom-app",
+								RepositorySettings: &catalogv1alpha1.RepositorySettings{
+									BaseURL: "https://charts.example.com",
+								},
+								ChartVersions: []catalogv1alpha1.ChartVersion{
+									{ChartVersion: "1.0.0", AppVersion: "v1.0.0"},
+								},
+							},
+							{
+								ChartName: "another-custom-app",
+								RepositorySettings: &catalogv1alpha1.RepositorySettings{
+									BaseURL: "https://charts.example.com",
+								},
+								ChartVersions: []catalogv1alpha1.ChartVersion{
+									{ChartVersion: "2.0.0", AppVersion: "v2.0.0"},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			err = s.createApplicationCatalog(ctx, userCatalog)
+			require.NoError(t, err, "failed to create user custom catalog")
+			t.Log("User custom catalog created")
+
+			userRetrieved, err := s.getApplicationCatalog(ctx, userCatalog.Name)
+			require.NoError(t, err, "failed to get user custom catalog")
+			require.Len(t, userRetrieved.Spec.Helm.Charts, 2,
+				"User catalog should have 2 custom charts")
+
+			require.Equal(t, "my-custom-app", userRetrieved.Spec.Helm.Charts[0].ChartName,
+				"first user chart should be my-custom-app")
+			require.Equal(t, "another-custom-app", userRetrieved.Spec.Helm.Charts[1].ChartName,
+				"second user chart should be another-custom-app")
+
+			t.Log("Verifying both catalogs coexist independently")
+
+			kkpRetrievedAgain, err := s.getApplicationCatalog(ctx, kkpCatalog.Name)
+			require.NoError(t, err, "failed to get KKP catalog again")
+			require.Len(t, kkpRetrievedAgain.Spec.Helm.Charts, 11,
+				"KKP catalog should still have 11 default charts")
+
+			userRetrievedAgain, err := s.getApplicationCatalog(ctx, userCatalog.Name)
+			require.NoError(t, err, "failed to get user catalog again")
+			require.Len(t, userRetrievedAgain.Spec.Helm.Charts, 2,
+				"User catalog should still have 2 custom charts")
+
+			t.Log("Successfully verified KKP default catalog and user custom catalog coexist correctly")
 			return ctx
 		},
 	).Teardown(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {

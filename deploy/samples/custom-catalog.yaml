@@ -1,0 +1,45 @@
+# Copyright 2026 The Application Catalog Manager contributors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Basic custom catalog with your own applications
+# No defaults included - only the charts you define here
+apiVersion: applicationcatalog.k8c.io/v1alpha1
+kind: ApplicationCatalog
+metadata:
+  name: custom-catalog
+spec:
+  helm:
+    charts:
+      - chartName: my-application
+        metadata:
+          displayName: "My Application"
+          description: "My custom application"
+          documentationURL: "https://docs.mycompany.com"
+          sourceURL: "https://github.com/mycompany/my-application"
+        repositorySettings:
+          baseURL: https://charts.mycompany.com
+        chartVersions:
+          - chartVersion: 1.0.0
+            appVersion: v1.0.0
+          - chartVersion: 1.1.0
+            appVersion: v1.1.0
+      - chartName: another-app
+        metadata:
+          displayName: "Another App"
+          description: "Another custom application"
+        repositorySettings:
+          baseURL: https://charts.example.com
+        chartVersions:
+          - chartVersion: 2.0.0
+            appVersion: v2.0.0
