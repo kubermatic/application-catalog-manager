@@ -63,16 +63,29 @@ func (r *Reconciler) reconcile(ctx context.Context, l *zap.SugaredLogger, req re
 	if err := r.Get(ctx, req.NamespacedName, catalog); err != nil {
 		if apierrors.IsNotFound(err) {
 			l.Info("ApplicationCatalog not found, unmanaging orphaned ApplicationDefinitions")
+
 			return r.handleDeletion(ctx, req.Name)
 		}
+
 		return fmt.Errorf("failed to get ApplicationCatalog: %w", err)
 	}
 
 	charts := catalog.GetHelmCharts()
-	if charts == nil {
-		l.Debug("spec.helm.charts is not configured in the ApplicationCatalog, waiting webhook to reconcile")
+
+	// If charts is nil but includeDefaults is true, the webhook should have
+	// populated defaults but didn't run or failed. Requeue to wait for webhook.
+	if charts == nil && catalog.Spec.Helm != nil && catalog.Spec.Helm.IncludeDefaults {
+		l.Info("Waiting for webhook to populate default charts")
 		return errRequeueAfter10Secs
 	}
+
+	// If charts is nil and includeDefaults is false (or spec.helm is nil),
+	// this is a valid empty catalog. Convert nil to empty slice.
+	if charts == nil {
+		charts = []catalogv1alpha1.ChartConfig{}
+	}
+
+	l.Info("total number of charts", len(charts))
 
 	var errs []error
 	generatedApps := make(map[string]bool)
@@ -87,7 +100,8 @@ func (r *Reconciler) reconcile(ctx context.Context, l *zap.SugaredLogger, req re
 		}
 	}
 
-	if err := r.unmanageOrphans(ctx, catalog.Name, generatedApps); err != nil {
+	err := r.unmanageOrphans(ctx, catalog.Name, generatedApps)
+	if err != nil {
 		errs = append(errs, err)
 	}
 
@@ -105,6 +119,8 @@ func (r *Reconciler) reconcileApplicationDefinition(
 	l *zap.SugaredLogger,
 	desired *appskubermaticv1.ApplicationDefinition,
 ) error {
+	l.Debug("reconciling %q", ctrlruntimeclient.ObjectKeyFromObject(desired))
+
 	existing := &appskubermaticv1.ApplicationDefinition{}
 
 	err := r.Get(ctx, ctrlruntimeclient.ObjectKey{Name: desired.Name}, existing)

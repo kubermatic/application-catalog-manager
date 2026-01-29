@@ -138,7 +138,6 @@ func TestDefaultApplicationCatalog(t *testing.T) {
 				},
 			},
 			verify: func(t *testing.T, catalog *catalogv1alpha1.ApplicationCatalog) {
-				// Auto-sync with all defaults
 				assertChartsNotEmpty(t, catalog)
 				assertChartCount(t, catalog, len(GetDefaultCharts()))
 			},
@@ -157,7 +156,6 @@ func TestDefaultApplicationCatalog(t *testing.T) {
 				},
 			},
 			verify: func(t *testing.T, catalog *catalogv1alpha1.ApplicationCatalog) {
-				// Empty array + defaults = defaults only
 				assertChartCount(t, catalog, len(GetDefaultCharts()))
 			},
 		},
@@ -177,13 +175,12 @@ func TestDefaultApplicationCatalog(t *testing.T) {
 				},
 			},
 			verify: func(t *testing.T, catalog *catalogv1alpha1.ApplicationCatalog) {
-				// Custom app + all defaults
 				assertChartNamesContains(t, catalog, []string{"my-custom-app"})
 				assertChartCount(t, catalog, len(GetDefaultCharts())+1)
 			},
 		},
 		{
-			name: "includeDefaults=true, no annotation, charts=[default-only]",
+			name: "includeDefaults=true, no annotation, charts=[ingress-nginx]",
 			catalog: &catalogv1alpha1.ApplicationCatalog{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-catalog",
@@ -198,7 +195,6 @@ func TestDefaultApplicationCatalog(t *testing.T) {
 				},
 			},
 			verify: func(t *testing.T, catalog *catalogv1alpha1.ApplicationCatalog) {
-				// Default app from user + all defaults = one ingress-nginx (from defaults)
 				assertChartCount(t, catalog, len(GetDefaultCharts()))
 			},
 		},
@@ -223,14 +219,12 @@ func TestDefaultApplicationCatalog(t *testing.T) {
 				},
 			},
 			verify: func(t *testing.T, catalog *catalogv1alpha1.ApplicationCatalog) {
-				// User's override wins
 				assertChartCount(t, catalog, len(GetDefaultCharts()))
 				ingressNginx := findChart(t, catalog.Spec.Helm.Charts, "ingress-nginx")
 				if ingressNginx.RepositorySettings == nil {
 					t.Errorf("User's RepositorySettings override not preserved")
 				} else if ingressNginx.RepositorySettings.BaseURL != "https://my-registry.com/charts" {
-					t.Errorf("User's override not applied: got %s, want https://my-registry.com/charts",
-						ingressNginx.RepositorySettings.BaseURL)
+					t.Errorf("User's override not applied: got %s, want https://my-registry.com/charts", ingressNginx.RepositorySettings.BaseURL)
 				}
 			},
 		},
@@ -251,7 +245,6 @@ func TestDefaultApplicationCatalog(t *testing.T) {
 				},
 			},
 			verify: func(t *testing.T, catalog *catalogv1alpha1.ApplicationCatalog) {
-				// Mix of custom and default apps
 				assertChartNamesContains(t, catalog, []string{"my-custom-app-1", "ingress-nginx"})
 			},
 		},
@@ -272,7 +265,6 @@ func TestDefaultApplicationCatalog(t *testing.T) {
 				},
 			},
 			verify: func(t *testing.T, catalog *catalogv1alpha1.ApplicationCatalog) {
-				// Empty annotation = no filter (all defaults)
 				assertChartsNotEmpty(t, catalog)
 				assertChartCount(t, catalog, len(GetDefaultCharts()))
 			},

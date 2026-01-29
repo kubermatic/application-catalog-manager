@@ -90,6 +90,7 @@ func (ac *ApplicationCatalog) GetHelmCharts() []ChartConfig {
 	if ac.Spec.Helm == nil {
 		return nil
 	}
+
 	return ac.Spec.Helm.Charts
 }
 

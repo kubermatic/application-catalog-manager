@@ -74,6 +74,7 @@ func main() {
 
 	ctrlruntimelog.SetLogger(zapr.NewLogger(rawLog.WithOptions(zap.AddCallerSkip(1))))
 
+	l.Infow("hello", "logLevel", rawLog.Level().String())
 	l.Info("Initializing application-catalog webhook")
 
 	mgr, err := manager.New(config.GetConfigOrDie(), manager.Options{
