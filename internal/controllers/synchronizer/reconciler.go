@@ -117,7 +117,7 @@ func (r *Reconciler) reconcileApplicationDefinition(
 	l *zap.SugaredLogger,
 	desired *appskubermaticv1.ApplicationDefinition,
 ) error {
-	l.Debugw("reconciling", "applicationcatalog", ctrlruntimeclient.ObjectKeyFromObject(desired))
+	l.Debugw("Reconciling ApplicationDefinition", "applicationDefinition", ctrlruntimeclient.ObjectKeyFromObject(desired))
 
 	existing := &appskubermaticv1.ApplicationDefinition{}
 
