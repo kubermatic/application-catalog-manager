@@ -19,6 +19,7 @@ package synchronizer
 import (
 	"testing"
 
+	catalogv1alpha1 "k8c.io/application-catalog-manager/pkg/apis/applicationcatalog/v1alpha1"
 	appskubermaticv1 "k8c.io/kubermatic/sdk/v2/apis/apps.kubermatic/v1"
 )
 
@@ -365,5 +366,198 @@ func TestMergeVersionsPreservesOrder(t *testing.T) {
 		if result[i].Version != expected {
 			t.Errorf("position %d: expected %q, got %q", i, expected, result[i].Version)
 		}
+	}
+}
+
+func TestReconcileChartNilBehavior(t *testing.T) {
+	tests := []struct {
+		name            string
+		includeDefaults bool
+		charts          []catalogv1alpha1.ChartConfig
+		helmSpecNil     bool
+		wantRequeue     bool
+		description     string
+	}{
+		{
+			name:            "nil charts with includeDefaults true requeues",
+			includeDefaults: true,
+			charts:          nil,
+			helmSpecNil:     false,
+			wantRequeue:     true,
+			description:     "Webhook should have populated defaults but hasn't run yet",
+		},
+		{
+			name:            "nil charts with includeDefaults false processes as empty",
+			includeDefaults: false,
+			charts:          nil,
+			helmSpecNil:     false,
+			wantRequeue:     false,
+			description:     "Valid empty catalog, user doesn't want defaults",
+		},
+		{
+			name:            "nil helm spec processes as empty",
+			includeDefaults: false,
+			charts:          nil,
+			helmSpecNil:     true,
+			wantRequeue:     false,
+			description:     "No helm configuration, treat as empty catalog",
+		},
+		{
+			name:            "empty slice with includeDefaults true processes",
+			includeDefaults: true,
+			charts:          []catalogv1alpha1.ChartConfig{},
+			helmSpecNil:     false,
+			wantRequeue:     false,
+			description:     "Explicitly empty catalog, webhook already ran",
+		},
+		{
+			name:            "empty slice with includeDefaults false processes",
+			includeDefaults: false,
+			charts:          []catalogv1alpha1.ChartConfig{},
+			helmSpecNil:     false,
+			wantRequeue:     false,
+			description:     "Valid empty catalog with empty slice",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			catalog := &catalogv1alpha1.ApplicationCatalog{
+				Spec: catalogv1alpha1.ApplicationCatalogSpec{},
+			}
+
+			if !tc.helmSpecNil {
+				catalog.Spec.Helm = &catalogv1alpha1.HelmSpec{
+					IncludeDefaults: tc.includeDefaults,
+					Charts:          tc.charts,
+				}
+			}
+
+			charts := catalog.GetHelmCharts()
+
+			var shouldRequeue bool
+			if charts == nil && catalog.Spec.Helm != nil && catalog.Spec.Helm.IncludeDefaults {
+				shouldRequeue = true
+			}
+
+			if charts == nil && !tc.helmSpecNil && !catalog.Spec.Helm.IncludeDefaults {
+				charts = []catalogv1alpha1.ChartConfig{}
+			}
+
+			if charts == nil && tc.helmSpecNil {
+				charts = []catalogv1alpha1.ChartConfig{}
+			}
+
+			if shouldRequeue != tc.wantRequeue {
+				t.Errorf("%s: expected requeue=%v, got requeue=%v\n%s",
+					tc.name, tc.wantRequeue, shouldRequeue, tc.description)
+			}
+
+			if !tc.wantRequeue && charts == nil {
+				t.Errorf("%s: expected charts to be converted to empty slice, got nil", tc.name)
+			}
+		})
+	}
+}
+
+func TestReconcileNilToEmptySliceIdempotency(t *testing.T) {
+	catalog := &catalogv1alpha1.ApplicationCatalog{
+		Spec: catalogv1alpha1.ApplicationCatalogSpec{
+			Helm: &catalogv1alpha1.HelmSpec{
+				IncludeDefaults: false,
+				Charts:          nil,
+			},
+		},
+	}
+
+	firstPassCharts := catalog.GetHelmCharts()
+	if firstPassCharts != nil {
+		t.Errorf("First pass: expected nil charts, got non-nil")
+	}
+
+	if firstPassCharts == nil && catalog.Spec.Helm != nil && !catalog.Spec.Helm.IncludeDefaults {
+		firstPassCharts = []catalogv1alpha1.ChartConfig{}
+	}
+
+	if firstPassCharts == nil {
+		t.Errorf("First pass: charts should be converted to empty slice")
+	}
+
+	if len(firstPassCharts) != 0 {
+		t.Errorf("First pass: expected 0 charts, got %d", len(firstPassCharts))
+	}
+
+	secondPassCharts := firstPassCharts
+	if secondPassCharts == nil {
+		t.Errorf("Second pass: charts should not be nil")
+	}
+
+	if len(secondPassCharts) != 0 {
+		t.Errorf("Second pass: expected 0 charts, got %d", len(secondPassCharts))
+	}
+}
+
+func TestGetHelmChartsReturnsCorrectly(t *testing.T) {
+	tests := []struct {
+		name       string
+		helmSpec   *catalogv1alpha1.HelmSpec
+		wantNil    bool
+		wantLength int
+	}{
+		{
+			name:     "nil helm spec returns nil",
+			helmSpec: nil,
+			wantNil:  true,
+		},
+		{
+			name: "nil charts returns nil",
+			helmSpec: &catalogv1alpha1.HelmSpec{
+				Charts: nil,
+			},
+			wantNil: true,
+		},
+		{
+			name: "empty charts returns empty slice",
+			helmSpec: &catalogv1alpha1.HelmSpec{
+				Charts: []catalogv1alpha1.ChartConfig{},
+			},
+			wantNil:    false,
+			wantLength: 0,
+		},
+		{
+			name: "charts with items returns slice",
+			helmSpec: &catalogv1alpha1.HelmSpec{
+				Charts: []catalogv1alpha1.ChartConfig{
+					{ChartName: "chart1"},
+					{ChartName: "chart2"},
+				},
+			},
+			wantNil:    false,
+			wantLength: 2,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			catalog := &catalogv1alpha1.ApplicationCatalog{
+				Spec: catalogv1alpha1.ApplicationCatalogSpec{
+					Helm: tc.helmSpec,
+				},
+			}
+
+			result := catalog.GetHelmCharts()
+
+			if tc.wantNil {
+				if result != nil {
+					t.Errorf("expected nil, got non-nil slice with length %d", len(result))
+				}
+			} else {
+				if result == nil {
+					t.Errorf("expected non-nil slice, got nil")
+				} else if len(result) != tc.wantLength {
+					t.Errorf("expected length %d, got %d", tc.wantLength, len(result))
+				}
+			}
+		})
 	}
 }

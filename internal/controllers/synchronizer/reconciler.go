@@ -63,15 +63,26 @@ func (r *Reconciler) reconcile(ctx context.Context, l *zap.SugaredLogger, req re
 	if err := r.Get(ctx, req.NamespacedName, catalog); err != nil {
 		if apierrors.IsNotFound(err) {
 			l.Info("ApplicationCatalog not found, unmanaging orphaned ApplicationDefinitions")
+
 			return r.handleDeletion(ctx, req.Name)
 		}
+
 		return fmt.Errorf("failed to get ApplicationCatalog: %w", err)
 	}
 
 	charts := catalog.GetHelmCharts()
-	if charts == nil {
-		l.Debug("spec.helm.charts is not configured in the ApplicationCatalog, waiting webhook to reconcile")
+
+	// If charts is nil but includeDefaults is true, the webhook should have
+	// populated defaults but didn't run or failed. Requeue to wait for webhook.
+	if charts == nil && catalog.Spec.Helm != nil && catalog.Spec.Helm.IncludeDefaults {
+		l.Info("Waiting for webhook to populate default charts")
 		return errRequeueAfter10Secs
+	}
+
+	// If charts is nil and includeDefaults is false (or spec.helm is nil),
+	// this is a valid empty catalog. Convert nil to empty slice.
+	if charts == nil {
+		charts = []catalogv1alpha1.ChartConfig{}
 	}
 
 	var errs []error
@@ -87,7 +98,8 @@ func (r *Reconciler) reconcile(ctx context.Context, l *zap.SugaredLogger, req re
 		}
 	}
 
-	if err := r.unmanageOrphans(ctx, catalog.Name, generatedApps); err != nil {
+	err := r.unmanageOrphans(ctx, catalog.Name, generatedApps)
+	if err != nil {
 		errs = append(errs, err)
 	}
 
@@ -105,19 +117,21 @@ func (r *Reconciler) reconcileApplicationDefinition(
 	l *zap.SugaredLogger,
 	desired *appskubermaticv1.ApplicationDefinition,
 ) error {
+	l.Debugw("Reconciling ApplicationDefinition", "applicationDefinition", ctrlruntimeclient.ObjectKeyFromObject(desired))
+
 	existing := &appskubermaticv1.ApplicationDefinition{}
 
 	err := r.Get(ctx, ctrlruntimeclient.ObjectKey{Name: desired.Name}, existing)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			l.Debugf("Creating ApplicationDefinition %q", desired.Name)
+			l.Debugw("Creating ApplicationDefinition", "name", desired.Name)
 			return r.Create(ctx, desired)
 		}
 		return fmt.Errorf("failed to get ApplicationDefinition %q: %w", desired.Name, err)
 	}
 
 	if isSystemApplication(existing) {
-		l.Debugf("Skipping system-application reconciliation %q, that is managed by KKP", existing.Name)
+		l.Debugw("Skipping system-application reconciliation", "name", existing.Name)
 		return nil
 	}
 
@@ -139,7 +153,7 @@ func (r *Reconciler) updateApplicationDefinition(
 	l *zap.SugaredLogger,
 	existing, desired *appskubermaticv1.ApplicationDefinition,
 ) error {
-	l.Debugf("Updating ApplicationDefinition %q", existing.Name)
+	l.Debugw("Updating ApplicationDefinition", "name", existing.Name)
 
 	return kubernetes.PatchObject(ctx, r.Client, existing, func() {
 		kubernetes.EnsureLabels(existing, desired.Labels)
