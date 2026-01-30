@@ -85,8 +85,6 @@ func (r *Reconciler) reconcile(ctx context.Context, l *zap.SugaredLogger, req re
 		charts = []catalogv1alpha1.ChartConfig{}
 	}
 
-	l.Info("total number of charts", len(charts))
-
 	var errs []error
 	generatedApps := make(map[string]bool)
 
@@ -119,21 +117,21 @@ func (r *Reconciler) reconcileApplicationDefinition(
 	l *zap.SugaredLogger,
 	desired *appskubermaticv1.ApplicationDefinition,
 ) error {
-	l.Debug("reconciling %q", ctrlruntimeclient.ObjectKeyFromObject(desired))
+	l.Debugw("reconciling", "applicationcatalog", ctrlruntimeclient.ObjectKeyFromObject(desired))
 
 	existing := &appskubermaticv1.ApplicationDefinition{}
 
 	err := r.Get(ctx, ctrlruntimeclient.ObjectKey{Name: desired.Name}, existing)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			l.Debugf("Creating ApplicationDefinition %q", desired.Name)
+			l.Debugw("Creating ApplicationDefinition", "name", desired.Name)
 			return r.Create(ctx, desired)
 		}
 		return fmt.Errorf("failed to get ApplicationDefinition %q: %w", desired.Name, err)
 	}
 
 	if isSystemApplication(existing) {
-		l.Debugf("Skipping system-application reconciliation %q, that is managed by KKP", existing.Name)
+		l.Debugw("Skipping system-application reconciliation", "name", existing.Name)
 		return nil
 	}
 
@@ -155,7 +153,7 @@ func (r *Reconciler) updateApplicationDefinition(
 	l *zap.SugaredLogger,
 	existing, desired *appskubermaticv1.ApplicationDefinition,
 ) error {
-	l.Debugf("Updating ApplicationDefinition %q", existing.Name)
+	l.Debugw("Updating ApplicationDefinition", "name", existing.Name)
 
 	return kubernetes.PatchObject(ctx, r.Client, existing, func() {
 		kubernetes.EnsureLabels(existing, desired.Labels)
