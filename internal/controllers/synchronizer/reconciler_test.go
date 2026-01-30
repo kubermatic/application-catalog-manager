@@ -19,8 +19,8 @@ package synchronizer
 import (
 	"testing"
 
-	appskubermaticv1 "k8c.io/kubermatic/sdk/v2/apis/apps.kubermatic/v1"
 	catalogv1alpha1 "k8c.io/application-catalog-manager/pkg/apis/applicationcatalog/v1alpha1"
+	appskubermaticv1 "k8c.io/kubermatic/sdk/v2/apis/apps.kubermatic/v1"
 )
 
 func TestMergeVersions(t *testing.T) {
@@ -499,10 +499,10 @@ func TestReconcileNilToEmptySliceIdempotency(t *testing.T) {
 
 func TestGetHelmChartsReturnsCorrectly(t *testing.T) {
 	tests := []struct {
-		name        string
-		helmSpec    *catalogv1alpha1.HelmSpec
-		wantNil     bool
-		wantLength  int
+		name       string
+		helmSpec   *catalogv1alpha1.HelmSpec
+		wantNil    bool
+		wantLength int
 	}{
 		{
 			name:     "nil helm spec returns nil",
