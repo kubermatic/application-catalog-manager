@@ -2519,3 +2519,131 @@ func TestKKPDefaultCatalogWithUserCustomCatalog(t *testing.T) {
 
 	testEnv.Test(t, f.Feature())
 }
+
+func TestAnnotationValidationRejectsInvalidNames(t *testing.T) {
+	var s applicationCatalogSuite
+	f := features.New("AnnotationValidationRejectsInvalidNames")
+
+	f.Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		err := s.setupTestCase(ctx, cfg)
+		require.NoError(t, err, "failed to setup test case")
+		return ctx
+	}).Assess("Webhook should reject catalog with invalid annotation chart names",
+		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+			catalog := &catalogv1alpha1.ApplicationCatalog{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "invalid-annotation-catalog",
+					Annotations: map[string]string{
+						"defaultcatalog.k8c.io/include": "nginx-ingress-controller,invalid-app",
+					},
+				},
+				Spec: catalogv1alpha1.ApplicationCatalogSpec{
+					Helm: &catalogv1alpha1.HelmSpec{
+						IncludeDefaults: true,
+					},
+				},
+			}
+
+			err := s.client.Create(ctx, catalog)
+			require.Error(t, err, "creating catalog with invalid annotation should be rejected")
+			t.Logf("Catalog correctly rejected: %v", err)
+
+			return ctx
+		},
+	).Teardown(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		require.NoError(t, s.cleanup(ctx))
+		return ctx
+	})
+
+	testEnv.Test(t, f.Feature())
+}
+
+func TestAnnotationValidationAcceptsValidNames(t *testing.T) {
+	var s applicationCatalogSuite
+	f := features.New("AnnotationValidationAcceptsValidNames")
+
+	f.Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		err := s.setupTestCase(ctx, cfg)
+		require.NoError(t, err, "failed to setup test case")
+		return ctx
+	}).Assess("Webhook should accept catalog with valid annotation chart names",
+		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+			catalog := &catalogv1alpha1.ApplicationCatalog{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "valid-annotation-catalog",
+					Annotations: map[string]string{
+						"defaultcatalog.k8c.io/include": "ingress-nginx,cert-manager",
+					},
+				},
+				Spec: catalogv1alpha1.ApplicationCatalogSpec{
+					Helm: &catalogv1alpha1.HelmSpec{
+						IncludeDefaults: true,
+					},
+				},
+			}
+
+			err := s.createApplicationCatalog(ctx, catalog)
+			require.NoError(t, err, "creating catalog with valid annotation should succeed")
+			t.Log("Catalog created successfully with valid annotation")
+
+			retrieved, err := s.getApplicationCatalog(ctx, catalog.Name)
+			require.NoError(t, err, "failed to get catalog")
+			require.Len(t, retrieved.Spec.Helm.Charts, 2,
+				"catalog should have exactly 2 charts as specified in annotation")
+
+			chartNames := make([]string, len(retrieved.Spec.Helm.Charts))
+			for i, chart := range retrieved.Spec.Helm.Charts {
+				chartNames[i] = chart.ChartName
+			}
+			require.ElementsMatch(t, []string{"cert-manager", "ingress-nginx"}, chartNames,
+				"charts should match the annotation values")
+
+			return ctx
+		},
+	).Teardown(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		require.NoError(t, s.cleanup(ctx))
+		return ctx
+	})
+
+	testEnv.Test(t, f.Feature())
+}
+
+func TestAnnotationValidationAcceptsNoAnnotation(t *testing.T) {
+	var s applicationCatalogSuite
+	f := features.New("AnnotationValidationAcceptsNoAnnotation")
+
+	f.Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		err := s.setupTestCase(ctx, cfg)
+		require.NoError(t, err, "failed to setup test case")
+		return ctx
+	}).Assess("Webhook should accept catalog without annotation when includeDefaults is true",
+		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+			catalog := &catalogv1alpha1.ApplicationCatalog{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "no-annotation-catalog",
+				},
+				Spec: catalogv1alpha1.ApplicationCatalogSpec{
+					Helm: &catalogv1alpha1.HelmSpec{
+						IncludeDefaults: true,
+					},
+				},
+			}
+
+			err := s.createApplicationCatalog(ctx, catalog)
+			require.NoError(t, err, "creating catalog without annotation should succeed")
+			t.Log("Catalog created successfully without annotation")
+
+			retrieved, err := s.getApplicationCatalog(ctx, catalog.Name)
+			require.NoError(t, err, "failed to get catalog")
+			require.Len(t, retrieved.Spec.Helm.Charts, 11,
+				"catalog should have all 11 default charts")
+
+			return ctx
+		},
+	).Teardown(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		require.NoError(t, s.cleanup(ctx))
+		return ctx
+	})
+
+	testEnv.Test(t, f.Feature())
+}

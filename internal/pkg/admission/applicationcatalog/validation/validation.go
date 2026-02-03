@@ -26,6 +26,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"k8c.io/application-catalog-manager/internal/pkg/defaulting"
 	catalogv1alpha1 "k8c.io/application-catalog-manager/pkg/apis/applicationcatalog/v1alpha1"
 	appskubermaticv1 "k8c.io/kubermatic/sdk/v2/apis/apps.kubermatic/v1"
 
@@ -87,6 +88,15 @@ func (h *AdmissionHandler) handleValidation(ctx context.Context, log *zap.Sugare
 	catalog := &catalogv1alpha1.ApplicationCatalog{}
 	if err := h.decoder.Decode(req, catalog); err != nil {
 		return admission.Errored(http.StatusBadRequest, fmt.Errorf("failed to decode request: %w", err))
+	}
+
+	// Validate include annotation before checking conflicts
+	if catalog.Spec.Helm != nil && catalog.Spec.Helm.IncludeDefaults {
+		annotation := catalog.Annotations["defaultcatalog.k8c.io/include"]
+		if invalidNames := defaulting.ValidateIncludeAnnotation(annotation); len(invalidNames) > 0 {
+			validNames := defaulting.GetDefaultChartNames()
+			return admission.Denied(fmt.Sprintf("invalid chart names in annotation defaultcatalog.k8c.io/include: %v. Valid names are: %v", invalidNames, validNames))
+		}
 	}
 
 	conflicts, err := h.detectConflicts(ctx, catalog)
