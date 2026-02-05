@@ -545,3 +545,46 @@ func findChart(t *testing.T, charts []catalogv1alpha1.ChartConfig, name string) 
 	t.Fatalf("Chart %q not found", name)
 	return nil
 }
+
+func TestGetDefaultChartNames(t *testing.T) {
+	expectedNames := []string{
+		"aikit",
+		"argo-cd",
+		"cert-manager",
+		"cilium",
+		"cluster-autoscaler",
+		"falco",
+		"flux2",
+		"gpu-operator",
+		"ingress-nginx",
+		"k8sgpt-operator",
+		"kube-vip",
+		"kubevirt",
+		"kueue",
+		"local-ai",
+		"metallb",
+		"trivy",
+		"trivy-operator",
+	}
+
+	charts := GetDefaultCharts()
+
+	actualNames := make([]string, len(charts))
+	for i, chart := range charts {
+		actualNames[i] = chart.ChartName
+	}
+
+	if len(actualNames) != len(expectedNames) {
+		t.Errorf("Expected %d chart names, got %d", len(expectedNames), len(actualNames))
+	}
+
+	for i, name := range expectedNames {
+		if i >= len(actualNames) {
+			t.Errorf("Missing expected chart name: %s", name)
+			continue
+		}
+		if actualNames[i] != name {
+			t.Errorf("Chart name mismatch at position %d: got %s, want %s", i, actualNames[i], name)
+		}
+	}
+}
