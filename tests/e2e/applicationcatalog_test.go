@@ -2654,8 +2654,7 @@ func TestAnnotationValidationAcceptsNoAnnotation(t *testing.T) {
 
 			retrieved, err := s.getApplicationCatalog(ctx, catalog.Name)
 			require.NoError(t, err, "failed to get catalog")
-			require.Len(t, retrieved.Spec.Helm.Charts, 11,
-				"catalog should have all 11 default charts")
+			require.Len(t, retrieved.Spec.Helm.Charts, getDefaultChartCount())
 
 			return ctx
 		},
