@@ -19,10 +19,12 @@ package e2e_test
 import (
 	"context"
 	"fmt"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"k8c.io/application-catalog-manager/internal/pkg/defaulting"
 	catalogv1alpha1 "k8c.io/application-catalog-manager/pkg/apis/applicationcatalog/v1alpha1"
 	appskubermaticv1 "k8c.io/kubermatic/sdk/v2/apis/apps.kubermatic/v1"
 
@@ -33,6 +35,21 @@ import (
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/features"
 )
+
+func getDefaultChartCount() int {
+	charts := defaulting.GetDefaultCharts()
+	return len(charts)
+}
+
+func getDefaultChartNames() []string {
+	charts := defaulting.GetDefaultCharts()
+	names := make([]string, len(charts))
+	for i, chart := range charts {
+		names[i] = chart.ChartName
+	}
+	sort.Strings(names)
+	return names
+}
 
 type applicationCatalogSuite struct {
 	suite
@@ -2016,14 +2033,16 @@ func TestIncludeDefaultsTrueInjectsAllDefaults(t *testing.T) {
 					return false, nil
 				}
 
-				if len(created.Spec.Helm.Charts) != 11 {
-					t.Logf("expected 11 default charts, got %d", len(created.Spec.Helm.Charts))
+				expectedCount := getDefaultChartCount()
+				if len(created.Spec.Helm.Charts) != expectedCount {
+					t.Logf("expected %d default charts, got %d", expectedCount, len(created.Spec.Helm.Charts))
 					return false, nil
 				}
 
 				return true, nil
 			})
-			require.NoError(t, err, "webhook should inject exactly 11 default charts")
+			expectedCount := getDefaultChartCount()
+			require.NoError(t, err, fmt.Sprintf("webhook should inject exactly %d default charts", expectedCount))
 
 			created, err := s.getApplicationCatalog(ctx, catalogName)
 			require.NoError(t, err)
@@ -2033,13 +2052,7 @@ func TestIncludeDefaultsTrueInjectsAllDefaults(t *testing.T) {
 				chartNames[i] = chart.ChartName
 			}
 
-			// TODO: use GetDefaultChartNames() function, and convert it to
-			// []string slice?
-			expectedCharts := []string{
-				"argo-cd", "cert-manager", "cilium", "cluster-autoscaler",
-				"falco", "flux2", "gpu-operator", "ingress-nginx",
-				"kueue", "metallb", "trivy",
-			}
+			expectedCharts := getDefaultChartNames()
 			require.Equal(t, expectedCharts, chartNames, "default charts should be sorted alphabetically")
 
 			for _, chart := range created.Spec.Helm.Charts {
@@ -2048,7 +2061,7 @@ func TestIncludeDefaultsTrueInjectsAllDefaults(t *testing.T) {
 				require.NotEmpty(t, chart.Metadata.Description, "metadata should have description")
 			}
 
-			t.Log("All 11 default charts injected correctly with metadata")
+			t.Log(fmt.Sprintf("All %d default charts injected correctly with metadata", len(chartNames)))
 			return ctx
 		},
 	).Teardown(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
@@ -2096,17 +2109,19 @@ func TestIncludeDefaultsTrueWithEmptyArray(t *testing.T) {
 					return false, nil
 				}
 
-				if len(created.Spec.Helm.Charts) != 11 {
+				expectedCount := getDefaultChartCount()
+				if len(created.Spec.Helm.Charts) != expectedCount {
 					return false, nil
 				}
 
 				return true, nil
 			})
-			require.NoError(t, err, "webhook should inject 11 default charts into empty array")
+			expectedCount := getDefaultChartCount()
+			require.NoError(t, err, fmt.Sprintf("webhook should inject %d default charts into empty array", expectedCount))
 
 			created, err := s.getApplicationCatalog(ctx, catalogName)
 			require.NoError(t, err)
-			require.Len(t, created.Spec.Helm.Charts, 11, "empty array + defaults = 11 charts")
+			require.Len(t, created.Spec.Helm.Charts, expectedCount, fmt.Sprintf("empty array + defaults = %d charts", expectedCount))
 
 			t.Log("Defaults injected into empty array correctly")
 			return ctx
@@ -2163,13 +2178,15 @@ func TestIncludeDefaultsTrueWithCustomCharts(t *testing.T) {
 					return false, nil
 				}
 
-				if len(created.Spec.Helm.Charts) != 12 {
+				expectedCount := getDefaultChartCount() + 1 // 1 custom + all defaults
+				if len(created.Spec.Helm.Charts) != expectedCount {
 					return false, nil
 				}
 
 				return true, nil
 			})
-			require.NoError(t, err, "webhook should merge 1 custom + 11 defaults = 12 charts")
+			expectedCount := getDefaultChartCount() + 1 // 1 custom + all defaults
+			require.NoError(t, err, fmt.Sprintf("webhook should merge 1 custom + %d defaults = %d charts", getDefaultChartCount(), expectedCount))
 
 			created, err := s.getApplicationCatalog(ctx, catalogName)
 			require.NoError(t, err)
@@ -2180,11 +2197,12 @@ func TestIncludeDefaultsTrueWithCustomCharts(t *testing.T) {
 			}
 
 			require.True(t, chartNames["my-custom-app"], "custom chart should be present")
-			require.True(t, chartNames["argo-cd"], "argo-cd default should be present")
-			require.True(t, chartNames["cert-manager"], "cert-manager default should be present")
-			require.True(t, chartNames["ingress-nginx"], "ingress-nginx default should be present")
+			expectedDefaults := getDefaultChartNames()
+			require.True(t, chartNames[expectedDefaults[0]], fmt.Sprintf("%s default should be present", expectedDefaults[0]))
+			require.True(t, chartNames[expectedDefaults[1]], fmt.Sprintf("%s default should be present", expectedDefaults[1]))
+			require.True(t, chartNames[expectedDefaults[2]], fmt.Sprintf("%s default should be present", expectedDefaults[2]))
 
-			t.Log("Custom chart merged with all 11 defaults correctly")
+			t.Log(fmt.Sprintf("Custom chart merged with all %d defaults correctly", getDefaultChartCount()))
 			return ctx
 		},
 	).Teardown(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
@@ -2243,13 +2261,15 @@ func TestIncludeDefaultsTrueOverrideDefault(t *testing.T) {
 					return false, nil
 				}
 
-				if len(created.Spec.Helm.Charts) != 11 {
+				expectedCount := getDefaultChartCount()
+				if len(created.Spec.Helm.Charts) != expectedCount {
 					return false, nil
 				}
 
 				return true, nil
 			})
-			require.NoError(t, err, "webhook should have 11 charts (override + 10 other defaults)")
+			expectedCount := getDefaultChartCount()
+			require.NoError(t, err, fmt.Sprintf("webhook should have %d charts (override + %d other defaults)", expectedCount, expectedCount-1))
 
 			created, err := s.getApplicationCatalog(ctx, catalogName)
 			require.NoError(t, err)
@@ -2266,8 +2286,10 @@ func TestIncludeDefaultsTrueOverrideDefault(t *testing.T) {
 			}
 
 			require.True(t, chartNames["ingress-nginx"], "ingress-nginx should be present")
-			require.True(t, chartNames["cert-manager"], "cert-manager default should be present")
-			require.True(t, chartNames["argo-cd"], "argo-cd default should be present")
+			// Verify other defaults exist
+			expectedDefaults := getDefaultChartNames()
+			require.True(t, chartNames[expectedDefaults[0]], fmt.Sprintf("%s default should be present", expectedDefaults[0]))
+			require.True(t, chartNames[expectedDefaults[len(expectedDefaults)-1]], fmt.Sprintf("%s default should be present", expectedDefaults[len(expectedDefaults)-1]))
 
 			t.Log("User's ingress-nginx completely replaced default correctly")
 			return ctx
@@ -2435,14 +2457,11 @@ func TestKKPDefaultCatalogWithUserCustomCatalog(t *testing.T) {
 
 			kkpRetrieved, err := s.getApplicationCatalog(ctx, kkpCatalog.Name)
 			require.NoError(t, err, "failed to get KKP default catalog")
-			require.Len(t, kkpRetrieved.Spec.Helm.Charts, 11,
-				"KKP catalog should have all 11 default charts")
+			expectedCount := getDefaultChartCount()
+			require.Len(t, kkpRetrieved.Spec.Helm.Charts, expectedCount,
+				fmt.Sprintf("KKP catalog should have all %d default charts", expectedCount))
 
-			expectedCharts := []string{
-				"argo-cd", "cert-manager", "cilium", "cluster-autoscaler",
-				"falco", "flux2", "gpu-operator", "ingress-nginx",
-				"kueue", "metallb", "trivy",
-			}
+			expectedCharts := getDefaultChartNames()
 
 			actualChartNames := make([]string, len(kkpRetrieved.Spec.Helm.Charts))
 			for i, chart := range kkpRetrieved.Spec.Helm.Charts {
@@ -2501,8 +2520,8 @@ func TestKKPDefaultCatalogWithUserCustomCatalog(t *testing.T) {
 
 			kkpRetrievedAgain, err := s.getApplicationCatalog(ctx, kkpCatalog.Name)
 			require.NoError(t, err, "failed to get KKP catalog again")
-			require.Len(t, kkpRetrievedAgain.Spec.Helm.Charts, 11,
-				"KKP catalog should still have 11 default charts")
+			require.Len(t, kkpRetrievedAgain.Spec.Helm.Charts, expectedCount,
+				fmt.Sprintf("KKP catalog should still have %d default charts", expectedCount))
 
 			userRetrievedAgain, err := s.getApplicationCatalog(ctx, userCatalog.Name)
 			require.NoError(t, err, "failed to get user catalog again")

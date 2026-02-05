@@ -548,23 +548,22 @@ func findChart(t *testing.T, charts []catalogv1alpha1.ChartConfig, name string) 
 
 func TestGetDefaultChartNames(t *testing.T) {
 	expectedNames := []string{
-		"aikit",
-		"argo-cd",
 		"cert-manager",
-		"cilium",
-		"cluster-autoscaler",
-		"falco",
-		"flux2",
-		"gpu-operator",
 		"ingress-nginx",
+		"argo-cd",
+		"metallb",
+		"trivy",
+		"flux2",
+		"kueue",
+		"nvidia/gpu-operator",
+		"falco",
+		"aikit",
 		"k8sgpt-operator",
 		"kube-vip",
 		"kubevirt",
-		"kueue",
 		"local-ai",
-		"metallb",
-		"trivy",
 		"trivy-operator",
+		"mcp-server-kubernetes",
 	}
 
 	charts := GetDefaultCharts()
