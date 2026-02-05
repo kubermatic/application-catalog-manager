@@ -590,54 +590,54 @@ func TestGetDefaultChartNames(t *testing.T) {
 
 func TestValidateIncludeAnnotation(t *testing.T) {
 	tests := []struct {
-		name      string
+		name       string
 		annotation string
-		want      []string
+		want       []string
 	}{
 		{
-			name:      "empty annotation",
+			name:       "empty annotation",
 			annotation: "",
-			want:      nil,
+			want:       nil,
 		},
 		{
-			name:      "whitespace only annotation",
+			name:       "whitespace only annotation",
 			annotation: "   ",
-			want:      nil,
+			want:       nil,
 		},
 		{
-			name:      "single valid name",
+			name:       "single valid name",
 			annotation: "ingress-nginx",
-			want:      nil,
+			want:       nil,
 		},
 		{
-			name:      "multiple valid names",
+			name:       "multiple valid names",
 			annotation: "ingress-nginx,cert-manager,argo-cd",
-			want:      nil,
+			want:       nil,
 		},
 		{
-			name:      "valid names with spaces",
+			name:       "valid names with spaces",
 			annotation: "ingress-nginx , cert-manager , argo-cd",
-			want:      nil,
+			want:       nil,
 		},
 		{
-			name:      "single invalid name",
+			name:       "single invalid name",
 			annotation: "nginx-ingress-controller",
-			want:      []string{"nginx-ingress-controller"},
+			want:       []string{"nginx-ingress-controller"},
 		},
 		{
-			name:      "multiple invalid names",
+			name:       "multiple invalid names",
 			annotation: "nginx-ingress-controller,invalid-app",
-			want:      []string{"nginx-ingress-controller", "invalid-app"},
+			want:       []string{"nginx-ingress-controller", "invalid-app"},
 		},
 		{
-			name:      "mixed valid and invalid names",
+			name:       "mixed valid and invalid names",
 			annotation: "ingress-nginx,nginx-ingress-controller,cert-manager",
-			want:      []string{"nginx-ingress-controller"},
+			want:       []string{"nginx-ingress-controller"},
 		},
 		{
-			name:      "case-sensitive invalid name",
+			name:       "case-sensitive invalid name",
 			annotation: "Ingress-Nginx",
-			want:      []string{"Ingress-Nginx"},
+			want:       []string{"Ingress-Nginx"},
 		},
 	}
 
