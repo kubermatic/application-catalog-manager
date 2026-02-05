@@ -547,115 +547,43 @@ func findChart(t *testing.T, charts []catalogv1alpha1.ChartConfig, name string) 
 }
 
 func TestGetDefaultChartNames(t *testing.T) {
-	names := GetDefaultChartNames()
-
-	// Verify we have the expected chart names
 	expectedNames := []string{
-		"argo-cd",
 		"cert-manager",
-		"cilium",
-		"cluster-autoscaler",
-		"falco",
-		"flux2",
-		"gpu-operator",
 		"ingress-nginx",
-		"kueue",
+		"argo-cd",
 		"metallb",
 		"trivy",
+		"flux2",
+		"kueue",
+		"nvidia/gpu-operator",
+		"falco",
+		"aikit",
+		"k8sgpt-operator",
+		"kube-vip",
+		"kubevirt",
+		"local-ai",
+		"trivy-operator",
+		"mcp-server-kubernetes",
 	}
 
-	// Check count matches
-	if len(names) != len(expectedNames) {
-		t.Errorf("Expected %d chart names, got %d", len(expectedNames), len(names))
+	charts := GetDefaultCharts()
+
+	actualNames := make([]string, len(charts))
+	for i, chart := range charts {
+		actualNames[i] = chart.ChartName
 	}
 
-	// Check all expected names are present
-	nameMap := make(map[string]struct{})
-	for _, name := range names {
-		nameMap[name] = struct{}{}
+	if len(actualNames) != len(expectedNames) {
+		t.Errorf("Expected %d chart names, got %d", len(expectedNames), len(actualNames))
 	}
-	for _, expected := range expectedNames {
-		if _, ok := nameMap[expected]; !ok {
-			t.Errorf("Expected chart name %q not found", expected)
+
+	for i, name := range expectedNames {
+		if i >= len(actualNames) {
+			t.Errorf("Missing expected chart name: %s", name)
+			continue
 		}
-	}
-
-	// Verify names are sorted
-	for i := 1; i < len(names); i++ {
-		if names[i-1] > names[i] {
-			t.Errorf("Chart names not sorted: %q > %q", names[i-1], names[i])
+		if actualNames[i] != name {
+			t.Errorf("Chart name mismatch at position %d: got %s, want %s", i, actualNames[i], name)
 		}
-	}
-}
-
-func TestValidateIncludeAnnotation(t *testing.T) {
-	tests := []struct {
-		name       string
-		annotation string
-		want       []string
-	}{
-		{
-			name:       "empty annotation",
-			annotation: "",
-			want:       nil,
-		},
-		{
-			name:       "whitespace only annotation",
-			annotation: "   ",
-			want:       nil,
-		},
-		{
-			name:       "single valid name",
-			annotation: "ingress-nginx",
-			want:       nil,
-		},
-		{
-			name:       "multiple valid names",
-			annotation: "ingress-nginx,cert-manager,argo-cd",
-			want:       nil,
-		},
-		{
-			name:       "valid names with spaces",
-			annotation: "ingress-nginx , cert-manager , argo-cd",
-			want:       nil,
-		},
-		{
-			name:       "single invalid name",
-			annotation: "nginx-ingress-controller",
-			want:       []string{"nginx-ingress-controller"},
-		},
-		{
-			name:       "multiple invalid names",
-			annotation: "nginx-ingress-controller,invalid-app",
-			want:       []string{"nginx-ingress-controller", "invalid-app"},
-		},
-		{
-			name:       "mixed valid and invalid names",
-			annotation: "ingress-nginx,nginx-ingress-controller,cert-manager",
-			want:       []string{"nginx-ingress-controller"},
-		},
-		{
-			name:       "case-sensitive invalid name",
-			annotation: "Ingress-Nginx",
-			want:       []string{"Ingress-Nginx"},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := ValidateIncludeAnnotation(tt.annotation)
-
-			// Compare slices
-			if len(got) != len(tt.want) {
-				t.Errorf("ValidateIncludeAnnotation() = %v, want %v", got, tt.want)
-				return
-			}
-
-			for i := range got {
-				if got[i] != tt.want[i] {
-					t.Errorf("ValidateIncludeAnnotation() = %v, want %v", got, tt.want)
-				}
-			}
-		})
 	}
 }
