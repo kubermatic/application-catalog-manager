@@ -449,3 +449,43 @@ func sortCharts(charts []catalogv1alpha1.ChartConfig) {
 		return charts[i].ChartName < charts[j].ChartName
 	})
 }
+
+// GetDefaultChartNames returns the valid default chart names.
+// Derived from GetDefaultCharts() - single source of truth.
+func GetDefaultChartNames() []string {
+	charts := GetDefaultCharts()
+	names := make([]string, 0, len(charts))
+	for _, chart := range charts {
+		names = append(names, chart.ChartName)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// ValidateIncludeAnnotation checks if the annotation values are valid default chart names.
+// Returns a list of invalid chart names found, or nil if all are valid.
+func ValidateIncludeAnnotation(annotation string) []string {
+	if annotation == "" {
+		return nil
+	}
+
+	// Build valid name set from GetDefaultCharts()
+	validNames := make(map[string]struct{})
+	for _, chart := range GetDefaultCharts() {
+		validNames[chart.ChartName] = struct{}{}
+	}
+
+	// Check requested names
+	requestedNames := parseIncludeList(annotation)
+	var invalid []string
+	for _, name := range requestedNames {
+		// Skip empty strings (e.g., from whitespace-only input)
+		if name == "" {
+			continue
+		}
+		if _, ok := validNames[name]; !ok {
+			invalid = append(invalid, name)
+		}
+	}
+	return invalid
+}
