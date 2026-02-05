@@ -545,3 +545,117 @@ func findChart(t *testing.T, charts []catalogv1alpha1.ChartConfig, name string) 
 	t.Fatalf("Chart %q not found", name)
 	return nil
 }
+
+func TestGetDefaultChartNames(t *testing.T) {
+	names := GetDefaultChartNames()
+
+	// Verify we have the expected chart names
+	expectedNames := []string{
+		"argo-cd",
+		"cert-manager",
+		"cilium",
+		"cluster-autoscaler",
+		"falco",
+		"flux2",
+		"gpu-operator",
+		"ingress-nginx",
+		"kueue",
+		"metallb",
+		"trivy",
+	}
+
+	// Check count matches
+	if len(names) != len(expectedNames) {
+		t.Errorf("Expected %d chart names, got %d", len(expectedNames), len(names))
+	}
+
+	// Check all expected names are present
+	nameMap := make(map[string]struct{})
+	for _, name := range names {
+		nameMap[name] = struct{}{}
+	}
+	for _, expected := range expectedNames {
+		if _, ok := nameMap[expected]; !ok {
+			t.Errorf("Expected chart name %q not found", expected)
+		}
+	}
+
+	// Verify names are sorted
+	for i := 1; i < len(names); i++ {
+		if names[i-1] > names[i] {
+			t.Errorf("Chart names not sorted: %q > %q", names[i-1], names[i])
+		}
+	}
+}
+
+func TestValidateIncludeAnnotation(t *testing.T) {
+	tests := []struct {
+		name       string
+		annotation string
+		want       []string
+	}{
+		{
+			name:       "empty annotation",
+			annotation: "",
+			want:       nil,
+		},
+		{
+			name:       "whitespace only annotation",
+			annotation: "   ",
+			want:       nil,
+		},
+		{
+			name:       "single valid name",
+			annotation: "ingress-nginx",
+			want:       nil,
+		},
+		{
+			name:       "multiple valid names",
+			annotation: "ingress-nginx,cert-manager,argo-cd",
+			want:       nil,
+		},
+		{
+			name:       "valid names with spaces",
+			annotation: "ingress-nginx , cert-manager , argo-cd",
+			want:       nil,
+		},
+		{
+			name:       "single invalid name",
+			annotation: "nginx-ingress-controller",
+			want:       []string{"nginx-ingress-controller"},
+		},
+		{
+			name:       "multiple invalid names",
+			annotation: "nginx-ingress-controller,invalid-app",
+			want:       []string{"nginx-ingress-controller", "invalid-app"},
+		},
+		{
+			name:       "mixed valid and invalid names",
+			annotation: "ingress-nginx,nginx-ingress-controller,cert-manager",
+			want:       []string{"nginx-ingress-controller"},
+		},
+		{
+			name:       "case-sensitive invalid name",
+			annotation: "Ingress-Nginx",
+			want:       []string{"Ingress-Nginx"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ValidateIncludeAnnotation(tt.annotation)
+
+			// Compare slices
+			if len(got) != len(tt.want) {
+				t.Errorf("ValidateIncludeAnnotation() = %v, want %v", got, tt.want)
+				return
+			}
+
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Errorf("ValidateIncludeAnnotation() = %v, want %v", got, tt.want)
+				}
+			}
+		})
+	}
+}
