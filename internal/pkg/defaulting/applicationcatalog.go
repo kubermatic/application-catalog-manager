@@ -213,7 +213,9 @@ fullnameOverride: "kueue"
 				LogoFormat:       "png",
 			},
 			ChartVersions: []catalogv1alpha1.ChartVersion{
-				{ChartVersion: "4.21.2", AppVersion: "0.40.0"},
+				{ChartVersion: "6.4.1", AppVersion: "0.41.3"},
+				{ChartVersion: "7.2.1", AppVersion: "0.42.1"},
+				{ChartVersion: "8.0.1", AppVersion: "0.43.0"},
 			},
 		},
 		{
