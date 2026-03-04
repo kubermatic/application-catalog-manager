@@ -1,6 +1,4 @@
-# TODO
-
-Check [the following wiki page](https://app.nuclino.com/Loodse/02-Engineering/Open-sourcing-projects-646a5b93-27d5-4245-83bc-cf10a5b9ad3d) for instructions how to setup everything needed to open source the project. Once you're done, make sure to delete this TODO part.
+# Application Catalog Manager
 
 ## Overview
 
@@ -19,7 +17,7 @@ declaratively.
 - Per-chart and per-version repository configuration
 - Secret-based credential management for private repositories
 - Multi-version support per application
-- Optional merging with default Kubermatic application catalog
+- Optional merging with the default Kubermatic application catalog
 - Annotation-based filtering for selective default chart inclusion
 
 ## Installation
@@ -42,7 +40,7 @@ For detailed information about Application Catalog Manager, see the
 
 ## Troubleshooting
 
-If you encounter issues [file an issue][1] or talk to us on the [#XXX channel][12] on the [Kubermatic Slack][15].
+If you encounter issues, file an issue][1] or talk to us on the [#XXX channel][12] on the [Kubermatic Slack][15].
 
 ## Contributing
 
@@ -63,10 +61,10 @@ Feedback and discussion are available on [the mailing list][11].
 
 See [the list of releases][3] to find out about feature changes.
 
-[1]: https://github.com/kubermatic/XXX/issues
-[2]: https://github.com/kubermatic/XXX/blob/main/CONTRIBUTING.md
-[3]: https://github.com/kubermatic/XXX/releases
-[4]: https://github.com/kubermatic/XXX/blob/main/CODE_OF_CONDUCT.md
+[1]: https://github.com/kubermatic/application-catalog-manager/issues
+[2]: https://github.com/kubermatic/application-catalog-manager/blob/main/CONTRIBUTING.md
+[3]: https://github.com/kubermatic/application-catalog-manager/releases
+[4]: https://github.com/kubermatic/application-catalog-manager/blob/main/CODE_OF_CONDUCT.md
 
 [11]: https://groups.google.com/forum/#!forum/kubermatic-dev
 [12]: https://kubermatic.slack.com/messages/XXX
