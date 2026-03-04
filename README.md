@@ -4,21 +4,41 @@ Check [the following wiki page](https://app.nuclino.com/Loodse/02-Engineering/Op
 
 ## Overview
 
-TODO
+Application Catalog Manager is a Kubernetes controller that synchronizes `ApplicationCatalog`
+custom resources to create and manage Kubermatic `ApplicationDefinition` resources. It bridges
+Helm chart catalogs with Kubermatic's application management system.
+
+The controller watches `ApplicationCatalog` resources and converts each defined Helm chart
+into a corresponding `ApplicationDefinition`, enabling users to manage application catalogs
+declaratively.
+
+### Key Features
+
+- Declarative application catalog management via custom resources
+- Support for OCI and HTTP/HTTPS Helm repositories
+- Per-chart and per-version repository configuration
+- Secret-based credential management for private repositories
+- Multi-version support per application
+- Optional merging with default Kubermatic application catalog
+- Annotation-based filtering for selective default chart inclusion
 
 ## Installation
 
-We strongly recommend that you use an [official release][3] of XXX. The tarballs for each release contain the
-command-line client **and** version-specific sample YAML files for deploying XXX to your cluster.
-Follow the instructions under the **Install** section of [our documentation][21] to get started.
+The controller is deployed as part of Kubermatic KKP. See the
+[KKP documentation](https://docs.kubermatic.com/kubermatic/) for installation instructions.
 
-_The code and sample YAML files in the main branch of the XXX repository are under active development and are not guaranteed to be stable. Use them at your own risk!_
+### CRD and Samples
 
-## More information
+The Custom Resource Definition and sample ApplicationCatalog manifests are available in the
+repository:
 
-[The documentation][21] provides a getting started guide, plus information about building from source, architecture, extending XXX, and more.
+- CRD: `deploy/crd/applicationcatalog.k8c.io_applicationcatalogs.yaml`
+- Samples: `deploy/samples/` - various example catalogs demonstrating different configurations
 
-Please use the version selector at the top of the site to ensure you are using the appropriate documentation for your version of XXX.
+## More Information
+
+For detailed information about Application Catalog Manager, see the
+[Application Catalog Manager documentation](https://docs.kubermatic.com/kubermatic/main/tutorials-howtos/applications/application-catalog-manager/).
 
 ## Troubleshooting
 
