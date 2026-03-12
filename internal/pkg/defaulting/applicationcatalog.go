@@ -281,6 +281,7 @@ fullnameOverride: "kueue"
 			},
 			ChartVersions: []catalogv1alpha1.ChartVersion{
 				{ChartVersion: "v1.1.0", AppVersion: "v1.1.0"},
+				{ChartVersion: "v1.7.1", AppVersion: "v1.7.1"},
 			},
 		},
 		{
