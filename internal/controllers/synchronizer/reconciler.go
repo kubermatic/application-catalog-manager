@@ -170,6 +170,9 @@ func (r *Reconciler) updateApplicationDefinition(
 		if existing.Spec.Selector.Datacenters != nil {
 			desired.Spec.Selector.Datacenters = existing.Spec.Selector.Datacenters
 		}
+		if existing.Spec.DefaultVersion != "" {
+			desired.Spec.DefaultVersion = existing.Spec.DefaultVersion
+		}
 
 		// Preserve the user customization unless the defaultValuesBlock is empty or "{}"
 		// In case of empty or "{}", application-catalog enforces the desired state to keep the KKP's existing pattern
