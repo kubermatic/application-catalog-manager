@@ -138,6 +138,13 @@ type ChartConfig struct {
 	// +optional
 	DefaultValuesBlock string `json:"defaultValuesBlock,omitempty"`
 
+	// DefaultDeployOptions holds the settings specific to the templating method
+	// used to deploy the application. These are propagated to the generated
+	// ApplicationDefinition.
+	//
+	// +optional
+	DefaultDeployOptions *DeployOptions `json:"defaultDeployOptions,omitempty"`
+
 	// ChartVersions lists the available versions of this chart.
 	//
 	// +kubebuilder:validation:MinItems=1
@@ -151,4 +158,24 @@ func (c *ChartConfig) GetAppName() string {
 		return c.Metadata.AppName
 	}
 	return c.ChartName
+}
+
+// DeployOptions holds the settings specific to the templating method
+// used to deploy the application.
+type DeployOptions struct {
+	// Helm holds deployment settings when the templating method is Helm.
+	//
+	// +optional
+	Helm *HelmDeployOptions `json:"helm,omitempty"`
+}
+
+// HelmDeployOptions holds deployment settings when the templating method is Helm.
+type HelmDeployOptions struct {
+	// Wait corresponds to the --wait flag on Helm CLI.
+	// If set, will wait until all Pods, PVCs, Services, and minimum number of Pods
+	// of a Deployment, StatefulSet, or ReplicaSet are in a ready state before
+	// marking the release as successful.
+	//
+	// +optional
+	Wait bool `json:"wait,omitempty"`
 }
