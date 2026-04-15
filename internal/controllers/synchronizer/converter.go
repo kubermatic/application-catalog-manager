@@ -49,6 +49,10 @@ func convertChartToApplicationDefinition(
 		},
 	}
 
+	if chart.DefaultDeployOptions != nil {
+		appDef.Spec.DefaultDeployOptions = convertDeployOptions(chart.DefaultDeployOptions)
+	}
+
 	if chart.Metadata != nil {
 		appDef.Spec.DisplayName = chart.Metadata.DisplayName
 		appDef.Spec.Description = chart.Metadata.Description
@@ -111,4 +115,22 @@ func convertCredentials(creds *catalogv1alpha1.RepositoryCredentials) *appskuber
 		Password:           creds.Password,
 		RegistryConfigFile: creds.RegistryConfigFile,
 	}
+}
+
+// convertDeployOptions converts DeployOptions from ApplicationCatalog format
+// to DeployOptions format used by ApplicationDefinition.
+func convertDeployOptions(opts *catalogv1alpha1.DeployOptions) *appskubermaticv1.DeployOptions {
+	if opts == nil {
+		return nil
+	}
+
+	result := &appskubermaticv1.DeployOptions{}
+
+	if opts.Helm != nil {
+		result.Helm = &appskubermaticv1.HelmDeployOptions{
+			Wait: opts.Helm.Wait,
+		}
+	}
+
+	return result
 }
