@@ -122,6 +122,9 @@ func GetDefaultCharts() []catalogv1alpha1.ChartConfig {
 				LogoFormat:       "png",
 			},
 			ChartVersions: []catalogv1alpha1.ChartVersion{
+				{ChartVersion: "0.14.9", AppVersion: "v0.14.9"},
+				{ChartVersion: "0.14.3", AppVersion: "v0.14.3"},
+				{ChartVersion: "0.13.10", AppVersion: "v0.13.10"},
 				{ChartVersion: "0.15.3", AppVersion: "v0.15.3"},
 			},
 		},
