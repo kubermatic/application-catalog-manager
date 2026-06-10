@@ -564,6 +564,7 @@ func TestGetDefaultChartNames(t *testing.T) {
 		"local-ai",
 		"trivy-operator",
 		"mcp-server-kubernetes",
+		"gateway-helm",
 	}
 
 	charts := GetDefaultCharts()
